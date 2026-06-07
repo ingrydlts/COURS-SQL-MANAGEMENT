@@ -1,0 +1,3136 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SQL Data Management — Cours Interactif</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;1,500&display=swap" rel="stylesheet">
+<script>
+  // All functions called via inline onclick must be defined here (before body renders)
+  function show(id) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.nav-pill').forEach(p => p.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    const map = { home: 0, mcd: 1, mld: 2, mpd: 3, sql: 4 };
+    const pills = document.querySelectorAll('.nav-pill');
+    if (pills[map[id]]) pills[map[id]].classList.add('active');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+  // Stubs — real implementations are in the bottom script block after DOM is built
+  function startFlashcards(m) { window._pendingFC = m; }
+  function closeFlashcards()  { var o=document.getElementById('fcOverlay'); if(o){o.classList.remove('visible'); document.body.style.overflow='';} }
+  function flipCard()         { var c=document.getElementById('fcCard'); if(c){c.classList.toggle('flipped'); if(c.classList.contains('flipped') && window._fcMarkSeen) window._fcMarkSeen();} }
+  function fcNext()           { if(window._fcNext) window._fcNext(); }
+  function fcPrev()           { if(window._fcPrev) window._fcPrev(); }
+  function restartFlashcards(){ if(window._fcRestart) window._fcRestart(); }
+  function closeKwModal()     { var m=document.getElementById('kwModal'); if(m){m.classList.remove('visible'); document.body.style.overflow='';} }
+  function closeModal(e)      { if(e.target===document.getElementById('kwModal')) closeKwModal(); }
+</script>
+<style>
+  :root {
+    --bg: #f5f4f0;
+    --surface: #eceae4;
+    --card: #ffffff;
+    --border: #d8d5cc;
+    --accent1: #4f46e5;
+    --accent2: #e0405e;
+    --accent3: #0d9e7e;
+    --accent4: #c97a1a;
+    --text: #1a1a2e;
+    --muted: #6b6880;
+    --code-bg: #f0eee8;
+    --code-text: #1a1a2e;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* NAVIGATION */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    background: rgba(245,244,240,0.95);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 60px;
+  }
+
+  .nav-logo {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--accent3);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .nav-pills {
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+  }
+
+  .nav-pill {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.6rem;
+    padding: 0.3rem 0.7rem;
+    border-radius: 100px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .nav-pill:hover, .nav-pill.active {
+    border-color: var(--accent1);
+    color: var(--accent1);
+    background: rgba(79,70,229,0.08);
+  }
+
+  /* MAIN */
+  main {
+    padding-top: 60px;
+  }
+
+  /* SECTIONS */
+  .section {
+    display: none;
+    min-height: calc(100vh - 60px);
+    padding: 3rem 2rem;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  .section.active {
+    display: block;
+    animation: fadeIn 0.4s ease;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* HERO */
+  .hero {
+    text-align: center;
+    padding: 5rem 2rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -100px; left: 50%;
+    transform: translateX(-50%);
+    width: 600px; height: 600px;
+    background: radial-gradient(circle, rgba(79,70,229,0.07) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .hero-tag {
+    display: inline-block;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--accent3);
+    border: 1px solid var(--accent3);
+    padding: 0.3rem 1rem;
+    border-radius: 100px;
+    margin-bottom: 1.5rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+
+  h1.hero-title {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(2rem, 5vw, 3.8rem);
+    font-weight: 600;
+    line-height: 1.1;
+    margin-bottom: 1rem;
+    letter-spacing: -0.01em;
+  }
+
+  .gradient-text {
+    background: linear-gradient(135deg, var(--accent1), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .hero-sub {
+    color: var(--muted);
+    font-size: 1.1rem;
+    max-width: 520px;
+    margin: 0 auto 2.5rem;
+    line-height: 1.6;
+  }
+
+  .modules-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+    margin-top: 3rem;
+    text-align: left;
+  }
+
+  .module-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.5rem;
+    cursor: pointer;
+    transition: all 0.25s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .module-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--card-accent);
+    transition: opacity 0.2s;
+  }
+
+  .module-card:hover {
+    border-color: var(--card-accent);
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.12);
+  }
+
+  .module-num {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--muted);
+    margin-bottom: 0.7rem;
+    letter-spacing: 0.1em;
+  }
+
+  .module-title {
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 0.95rem;
+    margin-bottom: 0.4rem;
+    letter-spacing: -0.01em;
+  }
+
+  .module-desc {
+    font-size: 0.8rem;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  /* SECTION HEADERS */
+  .section-header {
+    margin-bottom: 2.5rem;
+  }
+
+  .section-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--accent);
+    border: 1px solid currentColor;
+    padding: 0.25rem 0.8rem;
+    border-radius: 100px;
+    margin-bottom: 1rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  h2.section-title {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(1.6rem, 3.5vw, 2.4rem);
+    font-weight: 600;
+    line-height: 1.15;
+    margin-bottom: 0.7rem;
+    letter-spacing: -0.01em;
+  }
+
+  .section-intro {
+    color: var(--muted);
+    font-size: 1rem;
+    max-width: 640px;
+    line-height: 1.65;
+  }
+
+  /* CARDS */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .card-title {
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 0.95rem;
+    margin-bottom: 0.8rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    letter-spacing: -0.01em;
+  }
+
+  /* CONCEPT GRID */
+  .concept-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1rem;
+    margin: 1.5rem 0;
+  }
+
+  .concept-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.2rem;
+    border-left: 3px solid var(--c, var(--accent1));
+  }
+
+  .concept-card h4 {
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 0.85rem;
+    margin-bottom: 0.5rem;
+    color: var(--c, var(--accent1));
+    letter-spacing: -0.01em;
+  }
+
+  .concept-card p {
+    font-size: 0.85rem;
+    color: var(--muted);
+    line-height: 1.55;
+  }
+
+  /* DIAGRAM BOXES */
+  .diagram-container {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 2rem;
+    margin: 1.5rem 0;
+    overflow-x: auto;
+  }
+
+  .diagram-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin: 1rem 0;
+  }
+
+  .entity-box {
+    background: var(--card);
+    border: 2px solid var(--accent1);
+    border-radius: 8px;
+    min-width: 140px;
+    overflow: hidden;
+    font-size: 0.8rem;
+  }
+
+  .entity-name {
+    background: var(--accent1);
+    color: white;
+    font-family: 'Space Mono', monospace;
+    font-weight: 700;
+    font-size: 0.75rem;
+    padding: 0.4rem 0.8rem;
+    text-align: center;
+    letter-spacing: 0.05em;
+  }
+
+  .entity-attrs {
+    padding: 0.5rem 0.8rem;
+    line-height: 1.7;
+    color: var(--muted);
+  }
+
+  .entity-attrs span.pk {
+    color: var(--accent4);
+    font-family: 'Space Mono', monospace;
+    font-size: 0.72rem;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+
+  .entity-attrs span.fk {
+    color: var(--accent2);
+    font-family: 'Space Mono', monospace;
+    font-size: 0.72rem;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+
+  .entity-attrs span.attr {
+    font-size: 0.78rem;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+
+  .relation-box {
+    background: rgba(224,64,94,0.08);
+    border: 2px solid var(--accent2);
+    border-radius: 8px;
+    padding: 0.6rem 1rem;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--accent2);
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  .cardinality {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--accent4);
+    padding: 0.2rem 0.5rem;
+    background: rgba(201,122,26,0.1);
+    border-radius: 4px;
+  }
+
+  .arrow {
+    color: var(--border);
+    font-size: 1.2rem;
+    flex-shrink: 0;
+  }
+
+  /* CODE BLOCKS */
+  pre, code {
+    font-family: 'Space Mono', monospace;
+  }
+
+  .code-block {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.2rem 1.5rem;
+    margin: 1rem 0;
+    overflow-x: auto;
+    font-size: 0.82rem;
+    line-height: 1.8;
+    position: relative;
+    color: var(--code-text);
+  }
+
+  .code-label {
+    position: absolute;
+    top: -1px; right: 12px;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.6rem;
+    background: var(--accent3);
+    color: var(--bg);
+    padding: 0.2rem 0.6rem;
+    border-radius: 0 0 6px 6px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 700;
+  }
+
+  .kw { color: #c0392b; font-weight: 700; }
+  .fn { color: #6f42c1; font-weight: 600; }
+  .str { color: #0d7a5f; }
+  .cm { color: #888; font-style: italic; }
+  .num { color: #0550ae; }
+  .type { color: #b35800; font-weight: 600; }
+
+  /* TABLE */
+  .sql-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+    margin: 1rem 0;
+  }
+
+  .sql-table th {
+    background: var(--accent1);
+    color: white;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.72rem;
+    padding: 0.6rem 1rem;
+    text-align: left;
+    letter-spacing: 0.05em;
+  }
+
+  .sql-table td {
+    padding: 0.5rem 1rem;
+    border-bottom: 1px solid var(--border);
+    color: var(--muted);
+  }
+
+  .sql-table tr:hover td { background: rgba(255,255,255,0.03); }
+
+  /* RULES TABLE */
+  .rules-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+    margin: 1rem 0;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .rules-table th {
+    background: var(--surface);
+    color: var(--accent3);
+    font-family: 'Space Mono', monospace;
+    font-size: 0.7rem;
+    padding: 0.8rem 1.2rem;
+    text-align: left;
+    border-bottom: 2px solid var(--border);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .rules-table td {
+    padding: 0.7rem 1.2rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--card);
+    line-height: 1.5;
+  }
+
+  .rules-table td:first-child {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.78rem;
+    color: var(--accent4);
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .rules-table td:nth-child(2) { color: var(--text); }
+  .rules-table td:nth-child(3) { color: var(--muted); font-size: 0.8rem; }
+
+  /* REVIEW SECTION */
+  .review-section {
+    background: linear-gradient(135deg, rgba(79,70,229,0.05), rgba(224,64,94,0.04));
+    border: 1px solid rgba(79,70,229,0.2);
+    border-radius: 20px;
+    padding: 2rem;
+    margin: 2.5rem 0;
+  }
+
+  .review-header {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .review-icon {
+    width: 36px; height: 36px;
+    background: var(--accent1);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    flex-shrink: 0;
+  }
+
+  .review-header h3 {
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 1.1rem;
+    letter-spacing: -0.01em;
+  }
+
+  /* KEYWORDS */
+  .keywords-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin: 1rem 0 1.5rem;
+  }
+
+  .keyword {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.72rem;
+    padding: 0.35rem 0.8rem;
+    border-radius: 8px;
+    letter-spacing: 0.04em;
+    border: 1px solid currentColor;
+  }
+
+  /* EXERCISE */
+  .exercise {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 1.3rem;
+    margin: 1rem 0;
+  }
+
+  .exercise-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--accent4);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    margin-bottom: 0.6rem;
+  }
+
+  .exercise p {
+    font-size: 0.88rem;
+    line-height: 1.6;
+    color: var(--text);
+    margin-bottom: 0.8rem;
+  }
+
+  /* DROPDOWN ANSWER */
+  details.answer {
+    margin-top: 0.8rem;
+  }
+
+  details.answer summary {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--accent3);
+    padding: 0.5rem 0.8rem;
+    background: rgba(13,158,126,0.07);
+    border: 1px solid rgba(13,158,126,0.2);
+    border-radius: 8px;
+    list-style: none;
+    transition: all 0.2s;
+    user-select: none;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  details.answer summary::-webkit-details-marker { display: none; }
+
+  details.answer summary:hover {
+    background: rgba(13,158,126,0.12);
+  }
+
+  details.answer[open] summary {
+    background: rgba(13,158,126,0.1);
+    border-color: var(--accent3);
+    border-radius: 8px 8px 0 0;
+  }
+
+  .answer-content {
+    background: #f7f9f4;
+    border: 1px solid rgba(13,158,126,0.15);
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    padding: 1.4rem;
+    font-size: 0.86rem;
+    line-height: 1.7;
+    color: var(--text);
+  }
+
+  .answer-content strong { color: #0d7a5f; }
+
+  /* Visual answer tables */
+  .ans-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.8rem 0;
+    font-size: 0.82rem;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .ans-table th {
+    background: #e8f4f0;
+    color: #0d7a5f;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.7rem;
+    padding: 0.6rem 1rem;
+    text-align: left;
+    border-bottom: 2px solid #b8ddd5;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .ans-table td {
+    padding: 0.55rem 1rem;
+    border-bottom: 1px solid #e8e6e0;
+    vertical-align: top;
+    color: var(--text);
+    background: white;
+  }
+  .ans-table tr:last-child td { border-bottom: none; }
+  .ans-table td.pk { color: #b35800; font-family: 'Space Mono', monospace; font-size: 0.75rem; font-weight: 700; }
+  .ans-table td.fk { color: #c0392b; font-family: 'Space Mono', monospace; font-size: 0.75rem; }
+  .ans-table td.attr { color: var(--muted); font-size: 0.8rem; }
+  .ans-table td.rule { color: #4f46e5; font-size: 0.78rem; font-style: italic; }
+
+  /* MLD schema visual */
+  .mld-schema {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    margin: 0.8rem 0;
+  }
+  .mld-table-box {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .mld-table-name {
+    background: #4f46e5;
+    color: white;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0.4rem 0.9rem;
+    letter-spacing: 0.06em;
+  }
+  .mld-table-name.green { background: #0d9e7e; }
+  .mld-table-name.pink  { background: #e0405e; }
+  .mld-table-name.orange{ background: #c97a1a; }
+  .mld-cols {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    padding: 0.6rem 0.9rem;
+  }
+  .mld-col {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.72rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: 5px;
+    background: #f0eee8;
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .mld-col.is-pk { background: #fff3e0; color: #b35800; border-color: #f0c070; font-weight: 700; }
+  .mld-col.is-fk { background: #fdecea; color: #c0392b; border-color: #f5b8b0; }
+  .mld-col.is-pkfk { background: #fce4ec; color: #c0392b; border-color: #f48fb1; font-weight: 700; }
+  .mld-rule-note {
+    font-size: 0.78rem;
+    color: #4f46e5;
+    font-style: italic;
+    padding: 0.3rem 0.9rem 0.6rem;
+  }
+
+  /* Answer code block (light) */
+  .ans-code {
+    background: #f0eee8;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.8rem 1rem;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.78rem;
+    line-height: 1.75;
+    color: var(--text);
+    margin: 0.6rem 0;
+    overflow-x: auto;
+  }
+  .ans-code .c-kw  { color: #c0392b; font-weight: 700; }
+  .ans-code .c-fn  { color: #6f42c1; }
+  .ans-code .c-str { color: #0d7a5f; }
+  .ans-code .c-cm  { color: #999; font-style: italic; }
+  .ans-code .c-num { color: #0550ae; }
+
+  /* BADGES */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.62rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 100px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .badge-green { background: rgba(13,158,126,0.1); color: var(--accent3); border: 1px solid rgba(13,158,126,0.25); }
+  .badge-purple { background: rgba(79,70,229,0.1); color: var(--accent1); border: 1px solid rgba(79,70,229,0.25); }
+  .badge-pink { background: rgba(224,64,94,0.1); color: var(--accent2); border: 1px solid rgba(224,64,94,0.25); }
+  .badge-orange { background: rgba(201,122,26,0.1); color: var(--accent4); border: 1px solid rgba(201,122,26,0.25); }
+
+  /* CALLOUT */
+  .callout {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem 1.2rem;
+    border-radius: 12px;
+    margin: 1rem 0;
+    font-size: 0.87rem;
+    line-height: 1.6;
+  }
+
+  .callout-warning {
+    background: rgba(201,122,26,0.08);
+    border-left: 3px solid var(--accent4);
+    color: var(--text);
+  }
+
+  .callout-info {
+    background: rgba(79,70,229,0.07);
+    border-left: 3px solid var(--accent1);
+    color: var(--text);
+  }
+
+  .callout-success {
+    background: rgba(13,158,126,0.08);
+    border-left: 3px solid var(--accent3);
+    color: var(--text);
+  }
+
+  .callout-icon { font-size: 1.1rem; flex-shrink: 0; padding-top: 0.1rem; }
+
+  /* PROGRESS */
+  .progress-bar {
+    display: flex;
+    gap: 0.3rem;
+    margin-bottom: 2rem;
+  }
+
+  .progress-step {
+    flex: 1;
+    height: 4px;
+    border-radius: 100px;
+    background: var(--border);
+    cursor: pointer;
+    transition: background 0.3s;
+  }
+
+  .progress-step.done { background: var(--accent3); }
+  .progress-step.active { background: var(--accent1); }
+
+  /* NAV BUTTONS */
+  .nav-buttons {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.7rem 1.4rem;
+    border-radius: 10px;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+    text-decoration: none;
+  }
+
+  .btn-primary {
+    background: var(--accent1);
+    color: white;
+  }
+
+  .btn-primary:hover {
+    background: #5a52e0;
+    transform: translateY(-2px);
+  }
+
+  .btn-secondary {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+  }
+
+  .btn-secondary:hover {
+    border-color: var(--accent1);
+    color: var(--accent1);
+  }
+
+  /* FORM NORMAL VISUALS */
+  .fn-pyramid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin: 1.5rem auto;
+    max-width: 500px;
+  }
+
+  .fn-level {
+    border-radius: 8px;
+    padding: 0.8rem 1.2rem;
+    text-align: center;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 500;
+    letter-spacing: 0;
+    transition: transform 0.2s;
+  }
+
+  .fn-level:hover { transform: scale(1.02); }
+
+  /* TYPES TABLE */
+  .types-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 0.8rem;
+    margin: 1rem 0;
+  }
+
+  .type-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem;
+    border-top: 3px solid var(--tc, var(--accent1));
+  }
+
+  .type-name {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--tc, var(--accent1));
+    margin-bottom: 0.4rem;
+  }
+
+  .type-desc {
+    font-size: 0.78rem;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  .type-example {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--accent3);
+    margin-top: 0.4rem;
+  }
+
+  /* SQL QUERY VISUAL */
+  .query-breakdown {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    margin: 1rem 0;
+  }
+
+  .qb-line {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.8rem;
+    padding: 0.5rem 0.8rem;
+    border-radius: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    font-family: 'Space Mono', monospace;
+    font-size: 0.8rem;
+  }
+
+  .qb-kw {
+    color: var(--accent2);
+    font-weight: 700;
+    min-width: 80px;
+    flex-shrink: 0;
+  }
+
+  .qb-val { color: var(--text); }
+  .qb-note { color: var(--muted); font-size: 0.72rem; margin-left: auto; font-style: italic; }
+
+  /* SCROLL */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--surface); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--accent1); }
+
+  /* DIVIDER */
+  .divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border), transparent);
+    margin: 2rem 0;
+  }
+
+  /* HIGHLIGHT */
+  .hl-purple { color: var(--accent1); font-weight: 600; }
+  .hl-pink { color: var(--accent2); font-weight: 600; }
+  .hl-green { color: var(--accent3); font-weight: 600; }
+  .hl-orange { color: var(--accent4); font-weight: 600; }
+
+  ul.styled {
+    padding-left: 1.2rem;
+    line-height: 1.9;
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+
+  ul.styled li strong { color: var(--text); }
+
+  /* SUMMARY ARROW */
+  .summary-arrow {
+    display: inline-block;
+    transition: transform 0.3s;
+    margin-right: 0.4rem;
+  }
+  details[open] .summary-arrow { transform: rotate(90deg); }
+
+  @media (max-width: 700px) {
+    .nav-pills { display: none; }
+    .section { padding: 2rem 1rem; }
+    .diagram-row { flex-direction: column; }
+    .modules-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">⬡ SQL · PSB</div>
+  <div class="nav-pills">
+    <button class="nav-pill active" onclick="show('home')">Accueil</button>
+    <button class="nav-pill" onclick="show('mcd')">1 · MCD</button>
+    <button class="nav-pill" onclick="show('mld')">2 · MLD</button>
+    <button class="nav-pill" onclick="show('mpd')">3 · MPD & MySQL</button>
+    <button class="nav-pill" onclick="show('sql')">4 · Requêtes SQL</button>
+  </div>
+</nav>
+
+<main>
+
+<!-- ============ HOME ============ -->
+<section id="home" class="section active">
+  <div class="hero">
+    <div class="hero-tag">📚 PSB · Semestre 8 · 2,5 ECTS</div>
+    <h1 class="hero-title">SQL <em style="font-style:italic;color:var(--muted)">·</em> <span class="gradient-text">Data Management</span></h1>
+    <p class="hero-sub">De la modélisation conceptuelle à l'écriture de requêtes SQL. Un parcours visuel, progressif et interactif.</p>
+  </div>
+
+  <!-- EXAM INSTRUCTIONS — EN PREMIER -->
+  <div style="margin-bottom:2.5rem">
+    <div style="display:flex;align-items:center;gap:0.7rem;margin-bottom:1.2rem">
+      <div style="width:32px;height:32px;background:rgba(224,64,94,0.12);border:1px solid rgba(224,64,94,0.3);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:0.9rem;flex-shrink:0">📋</div>
+      <div>
+        <div style="font-family:'Space Mono',monospace;font-size:0.6rem;color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:0.2rem">Important</div>
+        <div style="font-family:'Playfair Display',serif;font-weight:600;font-size:1.1rem;letter-spacing:-0.01em;color:var(--text)">Instructions de l'examen</div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1rem">
+
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.3rem;border-left:3px solid var(--accent2)">
+        <div style="font-family:'Space Mono',monospace;font-size:0.6rem;color:var(--accent2);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:0.8rem">Format & Modalités</div>
+        <ul style="list-style:none;padding:0;font-size:0.84rem;line-height:2.1;color:var(--muted)">
+          <li>📄 Sur <strong style="color:var(--text)">papier</strong> — pas d'ordinateur</li>
+          <li>⏱️ Durée : <strong style="color:var(--text)">1 heure</strong></li>
+          <li>📅 Date : <strong style="color:var(--text)">Juin 2026</strong></li>
+          <li>🚫 <strong style="color:var(--accent2)">IA interdite</strong> pendant l'examen</li>
+          <li>📚 Aucune documentation autorisée</li>
+        </ul>
+      </div>
+
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.3rem;border-left:3px solid var(--accent1)">
+        <div style="font-family:'Space Mono',monospace;font-size:0.6rem;color:var(--accent1);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:0.8rem">Ce que tu dois savoir faire</div>
+        <ul style="list-style:none;padding:0;font-size:0.84rem;line-height:2.1;color:var(--muted)">
+          <li>✦ Réaliser un <strong style="color:var(--text)">MCD</strong> depuis un énoncé</li>
+          <li>✦ Passer du MCD au <strong style="color:var(--text)">MLD</strong> (3 règles)</li>
+          <li>✦ Écrire des <strong style="color:var(--text)">CREATE TABLE</strong> en SQL</li>
+          <li>✦ Écrire des <strong style="color:var(--text)">requêtes SELECT</strong> complexes</li>
+          <li>✦ Appliquer les <strong style="color:var(--text)">formes normales</strong></li>
+        </ul>
+      </div>
+
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.3rem;border-left:3px solid var(--accent3)">
+        <div style="font-family:'Space Mono',monospace;font-size:0.6rem;color:var(--accent3);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:0.8rem">Évaluation</div>
+        <ul style="list-style:none;padding:0;font-size:0.84rem;line-height:2.1;color:var(--muted)">
+          <li>👥 <strong style="color:var(--text)">50%</strong> — Projet binôme (création BDD)</li>
+          <li>📝 <strong style="color:var(--text)">50%</strong> — Examen final papier</li>
+          <li>🎓 <strong style="color:var(--text)">2,5 ECTS</strong> — Semestre 8</li>
+          <li>🗓️ Cours terminé en <strong style="color:var(--text)">mars</strong>, examen en <strong style="color:var(--text)">juin</strong></li>
+          <li>⚠️ Révise de mars à juin sans tout oublier</li>
+        </ul>
+      </div>
+
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.3rem;border-left:3px solid var(--accent4)">
+        <div style="font-family:'Space Mono',monospace;font-size:0.6rem;color:var(--accent4);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:0.8rem">Conseils du prof</div>
+        <ul style="list-style:none;padding:0;font-size:0.84rem;line-height:2.1;color:var(--muted)">
+          <li>💡 Révise la <strong style="color:var(--text)">logique</strong>, pas juste la syntaxe</li>
+          <li>💡 Entraîne-toi à écrire SQL <strong style="color:var(--text)">à la main</strong></li>
+          <li>💡 Consulte le syllabus sur <strong style="color:var(--text)">PSB Learn</strong> (ch.0)</li>
+          <li>💡 Pratique régulièrement pour éviter le <strong style="color:var(--text)">rattrapage</strong></li>
+          <li>💡 Outil practice : <a href="https://www.sqlsnack.com/sqlpad/" target="_blank" style="color:var(--accent3);text-decoration:none">SQLPad →</a></li>
+        </ul>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div style="margin-bottom:1rem">
+    <div style="font-family:'Space Mono',monospace;font-size:0.6rem;color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:0.8rem">Modules du cours</div>
+  </div>
+
+  <div class="modules-grid">
+    <div class="module-card" style="--card-accent:#4f46e5" onclick="show('mcd')">
+      <div class="module-num">MODULE 01</div>
+      <div class="module-title" style="color:#4f46e5">MCD — Modèle Conceptuel</div>
+      <div class="module-desc">Entités, associations, cardinalités, formes normales. La base de tout.</div>
+    </div>
+    <div class="module-card" style="--card-accent:#e0405e" onclick="show('mld')">
+      <div class="module-num">MODULE 02</div>
+      <div class="module-title" style="color:#e0405e">MLD — Modèle Logique</div>
+      <div class="module-desc">Transformer le MCD en tables relationnelles avec clés primaires et étrangères.</div>
+    </div>
+    <div class="module-card" style="--card-accent:#0d9e7e" onclick="show('mpd')">
+      <div class="module-num">MODULE 03</div>
+      <div class="module-title" style="color:#0d9e7e">MPD & MySQL</div>
+      <div class="module-desc">Types de données, conventions de nommage, CREATE TABLE, INSERT INTO.</div>
+    </div>
+    <div class="module-card" style="--card-accent:#c97a1a" onclick="show('sql')">
+      <div class="module-num">MODULE 04</div>
+      <div class="module-title" style="color:#c97a1a">Requêtes SQL</div>
+      <div class="module-desc">SELECT, WHERE, ORDER BY, fonctions d'agrégation, GROUP BY, LIKE, BETWEEN.</div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- RESSOURCE ALTERNATIVE -->
+  <div style="margin-bottom:2rem">
+    <div style="font-family:'Space Mono',monospace;font-size:0.6rem;color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:1rem">Ressource complémentaire</div>
+    <a href="https://grafikart.fr/formations/apprendre-sql" target="_blank" style="text-decoration:none;display:block">
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.3rem 1.5rem;display:flex;align-items:center;gap:1.2rem;transition:all 0.2s;cursor:pointer" onmouseover="this.style.borderColor='#4f46e5';this.style.boxShadow='0 4px 20px rgba(79,70,229,0.1)'" onmouseout="this.style.borderColor='var(--border)';this.style.boxShadow='none'">
+        <div style="width:44px;height:44px;background:#ff3e00;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0">🎬</div>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.3rem">
+            <span style="font-family:'Inter',sans-serif;font-weight:600;font-size:0.95rem;color:var(--text)">Apprendre SQL — Grafikart</span>
+            <span style="font-family:'Space Mono',monospace;font-size:0.6rem;background:rgba(79,70,229,0.1);color:#4f46e5;border:1px solid rgba(79,70,229,0.2);padding:0.15rem 0.5rem;border-radius:100px;letter-spacing:0.06em;text-transform:uppercase">Gratuit</span>
+          </div>
+          <div style="font-size:0.82rem;color:var(--muted);line-height:1.5">Formation vidéo complète en français par Grafikart. Idéale pour consolider les bases SQL avec des exemples pratiques.</div>
+        </div>
+        <div style="font-size:0.85rem;color:var(--muted);flex-shrink:0">↗</div>
+      </div>
+    </a>
+  </div>
+
+</section>
+
+<!-- ============ MODULE 1 : MCD ============ -->
+<section id="mcd" class="section">
+  <div class="progress-bar">
+    <div class="progress-step done" onclick="show('home')"></div>
+    <div class="progress-step active"></div>
+    <div class="progress-step" onclick="show('mld')"></div>
+    <div class="progress-step" onclick="show('mpd')"></div>
+    <div class="progress-step" onclick="show('sql')"></div>
+  </div>
+
+  <div class="section-header">
+    <div class="section-tag" style="--accent:#4f46e5">Module 01</div>
+    <h2 class="section-title">Modèle <span style="color:var(--accent1)">Conceptuel</span><br>des Données</h2>
+    <p class="section-intro">Le MCD (ou modèle Entité/Association) permet de décrire la réalité AVANT de toucher à une seule ligne de SQL. C'est la phase de réflexion.</p>
+  </div>
+
+  <!-- ENTITÉ -->
+  <div class="card">
+    <div class="card-title">📦 Qu'est-ce qu'une Entité ?</div>
+    <p style="font-size:0.9rem;color:var(--muted);line-height:1.6;margin-bottom:1rem">
+      Une <span class="hl-purple">entité type</span> = une catégorie d'objets du monde réel qui partagent les mêmes caractéristiques.<br>
+      Une <span class="hl-green">occurrence</span> = une instance concrète de cette entité.
+    </p>
+    <div class="concept-grid">
+      <div class="concept-card" style="--c:#6c63ff">
+        <h4>Entité Type</h4>
+        <p>Représentation abstraite : <strong>Étudiant</strong>, <strong>Voiture</strong>, <strong>Cours</strong>. C'est le "moule".</p>
+      </div>
+      <div class="concept-card" style="--c:#00d4aa">
+        <h4>Occurrence (instance)</h4>
+        <p>Un étudiant précis : <strong>"Marie Curie, n°345"</strong>. C'est une ligne dans la future table.</p>
+      </div>
+      <div class="concept-card" style="--c:#ffa94d">
+        <h4>Représentation</h4>
+        <p>Rectangle avec le nom en haut, les attributs en dessous. L'identifiant est <u>souligné</u>.</p>
+      </div>
+    </div>
+
+    <div class="diagram-container">
+      <p style="text-align:center;font-size:0.75rem;color:var(--muted);margin-bottom:1rem;font-family:'Space Mono',monospace;letter-spacing:0.08em;text-transform:uppercase">Exemple — Entité ÉTUDIANT</p>
+      <div style="display:flex;justify-content:center">
+        <div class="entity-box" style="min-width:180px">
+          <div class="entity-name">ÉTUDIANT</div>
+          <div class="entity-attrs">
+            <span class="pk">🔑 numEtudiant</span>
+            <span class="attr">· nomEtudiant</span>
+            <span class="attr">· prenomEtudiant</span>
+            <span class="attr">· dateNaissance</span>
+          </div>
+        </div>
+      </div>
+      <p style="text-align:center;font-size:0.75rem;color:var(--accent4);margin-top:0.8rem">🔑 = identifiant unique (souligné dans les diagrammes)</p>
+    </div>
+  </div>
+
+  <!-- ATTRIBUTS -->
+  <div class="card">
+    <div class="card-title">🏷️ Les 4 types d'attributs</div>
+    <div class="concept-grid">
+      <div class="concept-card" style="--c:#6c63ff">
+        <h4>Attribut simple</h4>
+        <p>Valeur unique et directe. Ex : <strong>nom</strong>, <strong>prénom</strong>, <strong>prix</strong>.</p>
+      </div>
+      <div class="concept-card" style="--c:#ff6b9d">
+        <h4>Attribut multivalué ⚠️</h4>
+        <p>Peut contenir plusieurs valeurs (ex: plusieurs <strong>auteurs</strong> pour un livre). → Il faut en faire une <strong>entité séparée</strong> !</p>
+      </div>
+      <div class="concept-card" style="--c:#ffa94d">
+        <h4>Attribut composé</h4>
+        <p>Formé de sous-attributs : <strong>adresse</strong> = rue + CP + ville. Souvent transformé en entité.</p>
+      </div>
+      <div class="concept-card" style="--c:#00d4aa">
+        <h4>Attribut dérivé ⚠️</h4>
+        <p>Calculé depuis d'autres attributs. Ex : <strong>âge</strong> calculé depuis dateNaissance. → <strong>Ne pas stocker</strong> dans la BDD !</p>
+      </div>
+    </div>
+    <div class="callout callout-warning">
+      <span class="callout-icon">⚠️</span>
+      <div>Les attributs multivalués et dérivés <strong>ne peuvent pas exister</strong> dans une base de données finale. Il faut les transformer.</div>
+    </div>
+  </div>
+
+  <!-- ASSOCIATIONS -->
+  <div class="card">
+    <div class="card-title">🔗 Les Associations</div>
+    <p style="font-size:0.9rem;color:var(--muted);line-height:1.6;margin-bottom:1.2rem">
+      Une association représente un <span class="hl-pink">lien entre entités</span>, défini par un verbe à l'infinitif.<br>
+      Elle peut elle-même porter des <span class="hl-purple">attributs</span> si ces données décrivent le lien.
+    </p>
+
+    <div class="diagram-container">
+      <p style="text-align:center;font-size:0.75rem;color:var(--muted);margin-bottom:1.5rem;font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:0.08em">Étudiant — suit → Cours (avec attributs de relation)</p>
+      <div class="diagram-row">
+        <div class="entity-box">
+          <div class="entity-name">ÉTUDIANT</div>
+          <div class="entity-attrs">
+            <span class="pk">🔑 numEtudiant</span>
+            <span class="attr">· nomEtudiant</span>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:0.3rem">
+          <div style="font-size:0.7rem;color:var(--muted);font-family:'Space Mono',monospace">semestre · note</div>
+          <div class="cardinality">0,N</div>
+          <div class="relation-box">◇ suit</div>
+          <div class="cardinality">0,N</div>
+        </div>
+        <div class="entity-box">
+          <div class="entity-name">COURS</div>
+          <div class="entity-attrs">
+            <span class="pk">🔑 codeCours</span>
+            <span class="attr">· libelleCours</span>
+          </div>
+        </div>
+      </div>
+      <p style="text-align:center;font-size:0.78rem;color:var(--accent2);margin-top:1rem">➡ "Semestre" et "Note" appartiennent à la relation, pas à l'étudiant ni au cours</p>
+    </div>
+  </div>
+
+  <!-- CARDINALITÉS -->
+  <div class="card">
+    <div class="card-title">🔢 Les Cardinalités</div>
+    <p style="font-size:0.9rem;color:var(--muted);line-height:1.6;margin-bottom:1.2rem">
+      La cardinalité d'une association = le nombre de fois <span class="hl-orange">minimal</span> et <span class="hl-orange">maximal</span> qu'une entité participe à l'association.<br>
+      Format : <strong style="color:white">(min, max)</strong>
+    </p>
+    <table class="rules-table">
+      <tr><th>Cardinalité</th><th>Signification</th><th>Exemple</th></tr>
+      <tr><td>(0,1)</td><td>Optionnel, au plus 1</td><td>Un employé peut avoir 0 ou 1 voiture de fonction</td></tr>
+      <tr><td>(1,1)</td><td>Obligatoire, exactement 1</td><td>Un étudiant est inscrit dans exactement 1 université</td></tr>
+      <tr><td>(0,N)</td><td>Optionnel, plusieurs possible</td><td>Un cours peut avoir 0 ou N étudiants inscrits</td></tr>
+      <tr><td>(1,N)</td><td>Obligatoire, plusieurs possible</td><td>Une université a au moins 1 étudiant</td></tr>
+    </table>
+    <div class="callout callout-info">
+      <span class="callout-icon">💡</span>
+      <div><strong>Astuce lecture :</strong> La cardinalité côté A décrit la participation de A dans l'association <em>vue depuis B</em>. "Un CLIENT passe (1,N) commandes" = un client peut passer 1 à N commandes.</div>
+    </div>
+
+    <div class="diagram-container" style="margin-top:1rem">
+      <p style="text-align:center;font-size:0.75rem;color:var(--muted);margin-bottom:1rem;font-family:'Space Mono',monospace;text-transform:uppercase">Exemple complet — Commande de produits</p>
+      <div class="diagram-row">
+        <div class="entity-box">
+          <div class="entity-name">CLIENT</div>
+          <div class="entity-attrs">
+            <span class="pk">🔑 idClient</span>
+            <span class="attr">· nomClient</span>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:0.2rem">
+          <div class="cardinality">1,N</div>
+          <div class="relation-box">◇ passer</div>
+          <div class="cardinality">1,1</div>
+        </div>
+        <div class="entity-box">
+          <div class="entity-name">COMMANDE</div>
+          <div class="entity-attrs">
+            <span class="pk">🔑 numCommande</span>
+            <span class="attr">· dateCommande</span>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:0.2rem">
+          <div class="cardinality">1,N</div>
+          <div class="relation-box">◇ contenir</div>
+          <div class="cardinality">0,N</div>
+        </div>
+        <div class="entity-box">
+          <div class="entity-name">PRODUIT</div>
+          <div class="entity-attrs">
+            <span class="pk">🔑 reference</span>
+            <span class="attr">· nomProduit</span>
+            <span class="attr">· prix</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FORMES NORMALES -->
+  <div class="card">
+    <div class="card-title">📐 Les Formes Normales</div>
+    <p style="font-size:0.9rem;color:var(--muted);line-height:1.6;margin-bottom:1.5rem">Les formes normales garantissent la <span class="hl-green">qualité et la cohérence</span> du modèle. Chaque niveau inclut le précédent.</p>
+    <div class="fn-pyramid">
+      <div class="fn-level" style="background:rgba(108,99,255,0.15);border:1px solid rgba(108,99,255,0.4);color:#a09cff">BCNF — Forme Boyce-Codd : seules les DF élémentaires depuis un identifiant</div>
+      <div class="fn-level" style="background:rgba(0,212,170,0.12);border:1px solid rgba(0,212,170,0.35);color:#00d4aa">3FN — Toutes les dépendances fonctionnelles sont <strong>directes</strong></div>
+      <div class="fn-level" style="background:rgba(255,107,157,0.12);border:1px solid rgba(255,107,157,0.35);color:#ff6b9d">2FN — Toutes les DF sont <strong>élémentaires</strong> (dépend de tout l'identifiant)</div>
+      <div class="fn-level" style="background:rgba(255,169,77,0.12);border:1px solid rgba(255,169,77,0.35);color:#ffa94d">1FN — Chaque attribut est <strong>atomique</strong> (1 seule valeur) + identifiant présent</div>
+    </div>
+    <div class="callout callout-warning">
+      <span class="callout-icon">⚠️</span>
+      <div><strong>3FN en pratique :</strong> toute propriété doit dépendre <em>uniquement</em> de l'identifiant de son entité, pas d'un autre attribut. Ex : dans VOITURE(Immatriculation, Type, Marque), la Marque dépend du Type → violation 3FN → créer l'entité MODÈLE séparée.</div>
+    </div>
+  </div>
+
+  <!-- ===================== RÉVISION MCD ===================== -->
+  <div class="review-section">
+    <div class="review-header">
+      <div class="review-icon">🧠</div>
+      <h3>Session de Révision — MCD</h3>
+    </div>
+
+    <p style="font-size:0.85rem;color:var(--muted);margin-bottom:1rem">Assure-toi de maîtriser ces mots-clés avant de passer au module suivant :</p>
+
+    <div class="keywords-grid" id="kw-mcd">
+      <span class="keyword kw-chip" data-kw="Entité type" style="color:#6c63ff;border-color:#6c63ff30">Entité type</span>
+      <span class="keyword kw-chip" data-kw="Occurrence" style="color:#00d4aa;border-color:#00d4aa30">Occurrence</span>
+      <span class="keyword kw-chip" data-kw="Association" style="color:#ff6b9d;border-color:#ff6b9d30">Association</span>
+      <span class="keyword kw-chip" data-kw="Cardinalité (min, max)" style="color:#ffa94d;border-color:#ffa94d30">Cardinalité (min, max)</span>
+      <span class="keyword kw-chip" data-kw="Identifiant" style="color:#6c63ff;border-color:#6c63ff30">Identifiant</span>
+      <span class="keyword kw-chip" data-kw="Attribut multivalué" style="color:#00d4aa;border-color:#00d4aa30">Attribut multivalué</span>
+      <span class="keyword kw-chip" data-kw="Attribut dérivé" style="color:#ff6b9d;border-color:#ff6b9d30">Attribut dérivé</span>
+      <span class="keyword kw-chip" data-kw="1FN / 2FN / 3FN" style="color:#ffa94d;border-color:#ffa94d30">1FN / 2FN / 3FN</span>
+      <span class="keyword kw-chip" data-kw="Dépendance fonctionnelle" style="color:#6c63ff;border-color:#6c63ff30">Dépendance fonctionnelle</span>
+      <span class="keyword kw-chip" data-kw="Association réflexive" style="color:#ff6b9d;border-color:#ff6b9d30">Association réflexive</span>
+    </div>
+    <button class="flashcard-mode-btn" onclick="startFlashcards('mcd')">🃏 Mode Flashcards — révise ces concepts</button>
+
+    <div class="divider"></div>
+
+    <!-- EXERCICE 1 -->
+    <div class="exercise">
+      <div class="exercise-label">✏️ Exercice 1 — Identification des entités</div>
+      <p>L'entreprise ACME veut un catalogue numérique. Chaque <strong>produit</strong> a : nom, référence, prix, photo. Les produits appartiennent à des <strong>catégories</strong> (nom uniquement). Les <strong>clients</strong> professionnels peuvent <strong>commander</strong> des produits. Le règlement se fait sur <strong>facture</strong>.</p>
+      <p><strong>→ Identifie les entités, leurs attributs et leurs identifiants.</strong></p>
+      <details class="answer">
+        <summary><span class="summary-arrow">▶</span> Voir la correction</summary>
+        <div class="answer-content">
+          <strong>5 entités identifiées :</strong>
+          <table class="ans-table" style="margin-top:0.8rem">
+            <tr><th>Entité</th><th>Identifiant (PK)</th><th>Autres attributs</th></tr>
+            <tr><td><strong>PRODUIT</strong></td><td class="pk">🔑 Reference</td><td class="attr">Nom, Prix, Photo</td></tr>
+            <tr><td><strong>CATEGORIE</strong></td><td class="pk">🔑 IdCategorie</td><td class="attr">NomCategorie</td></tr>
+            <tr><td><strong>CLIENT</strong></td><td class="pk">🔑 IdClient</td><td class="attr">NomClient</td></tr>
+            <tr><td><strong>COMMANDE</strong></td><td class="pk">🔑 NumCommande</td><td class="attr">DateCommande</td></tr>
+            <tr><td><strong>FACTURE</strong></td><td class="pk">🔑 NumFacture</td><td class="attr">Montant, Date</td></tr>
+          </table>
+          <br><strong>Associations :</strong>
+          <table class="ans-table" style="margin-top:0.5rem">
+            <tr><th>Association</th><th>Entités</th><th>Cardinalité</th><th>Règle MLD</th></tr>
+            <tr><td>appartient</td><td>Produit → Catégorie</td><td class="pk">1-N</td><td class="rule">FK dans PRODUIT</td></tr>
+            <tr><td>passer</td><td>Client → Commande</td><td class="pk">1-N</td><td class="rule">FK dans COMMANDE</td></tr>
+            <tr><td>contenir</td><td>Commande ↔ Produit</td><td class="pk">N-N</td><td class="rule">Table CONTIENT</td></tr>
+            <tr><td>donner lieu</td><td>Commande → Facture</td><td class="pk">1-1</td><td class="rule">FK UNIQUE dans FACTURE</td></tr>
+          </table>
+        </div>
+      </details>
+    </div>
+
+    <!-- EXERCICE 2 -->
+    <div class="exercise">
+      <div class="exercise-label">✏️ Exercice 2 — Cardinalités</div>
+      <p>Pour chacune des situations suivantes, donne la cardinalité correcte :</p>
+      <p>a) Un appartement appartient à un et un seul immeuble. Un immeuble peut avoir 0 ou N appartements.<br>
+      b) Un étudiant s'inscrit dans une et une seule université. Une université accueille 1 à N étudiants.<br>
+      c) Un employé peut avoir 0 ou N voitures. Une voiture doit obligatoirement avoir 1 propriétaire.</p>
+      <details class="answer">
+        <summary><span class="summary-arrow">▶</span> Voir la correction</summary>
+        <div class="answer-content">
+          <table class="ans-table">
+            <tr><th>Cas</th><th>Entité A</th><th>Cardinalité A</th><th>Association</th><th>Cardinalité B</th><th>Entité B</th></tr>
+            <tr>
+              <td><strong>a)</strong></td>
+              <td>Appartement</td>
+              <td class="pk">(1,1)</td>
+              <td style="color:var(--accent2);font-style:italic">Fait partie</td>
+              <td class="pk">(0,N)</td>
+              <td>Immeuble</td>
+            </tr>
+            <tr>
+              <td><strong>b)</strong></td>
+              <td>Étudiant</td>
+              <td class="pk">(1,1)</td>
+              <td style="color:var(--accent2);font-style:italic">Est inscrit</td>
+              <td class="pk">(1,N)</td>
+              <td>Université</td>
+            </tr>
+            <tr>
+              <td><strong>c)</strong></td>
+              <td>Voiture</td>
+              <td class="pk">(1,1)</td>
+              <td style="color:var(--accent2);font-style:italic">Appartient à</td>
+              <td class="pk">(0,N)</td>
+              <td>Employé</td>
+            </tr>
+          </table>
+          <div style="background:#fffbf0;border:1px solid #f0d090;border-radius:8px;padding:0.7rem 1rem;margin-top:0.8rem;font-size:0.82rem">
+            💡 <strong>Lecture :</strong> b) L'université accueille 1..N étudiants → côté Université : (1,N). L'étudiant est dans 1 seule université → côté Étudiant : (1,1).<br>
+            💡 <strong>c)</strong> La voiture a obligatoirement 1 propriétaire → min=1 côté Voiture.
+          </div>
+        </div>
+      </details>
+    </div>
+
+    <!-- EXERCICE 3 -->
+    <div class="exercise">
+      <div class="exercise-label">✏️ Exercice 3 — Formes normales</div>
+      <p>La table VOITURE(Immatriculation, Couleur, Type, Marque, Puissance) est-elle en 3FN ? Pourquoi ? Si non, corrige-la.</p>
+      <details class="answer">
+        <summary><span class="summary-arrow">▶</span> Voir la correction</summary>
+        <div class="answer-content">
+          <strong style="color:#c0392b">❌ Non, elle n'est pas en 3FN.</strong>
+          <table class="ans-table" style="margin-top:0.8rem">
+            <tr><th>Attribut</th><th>Dépend de</th><th>Problème</th></tr>
+            <tr><td>Couleur</td><td class="pk">Immatriculation ✓</td><td class="attr">OK — dépend de l'identifiant</td></tr>
+            <tr><td>Type</td><td class="pk">Immatriculation ✓</td><td class="attr">OK — dépend de l'identifiant</td></tr>
+            <tr><td><strong>Marque</strong></td><td class="fk">Type ✗</td><td class="rule">⚠️ Violation 3FN : dépend d'un non-identifiant</td></tr>
+            <tr><td><strong>Puissance</strong></td><td class="fk">Type ✗</td><td class="rule">⚠️ Violation 3FN : dépend d'un non-identifiant</td></tr>
+          </table>
+          <strong>Correction — 2 tables :</strong>
+          <div class="mld-schema" style="margin-top:0.6rem">
+            <div class="mld-table-box">
+              <div class="mld-table-name">VOITURE</div>
+              <div class="mld-cols">
+                <span class="mld-col is-pk">🔑 Immatriculation</span>
+                <span class="mld-col">Couleur</span>
+                <span class="mld-col is-fk">🔗 Type (FK → MODELE)</span>
+              </div>
+            </div>
+            <div class="mld-table-box">
+              <div class="mld-table-name green">MODELE</div>
+              <div class="mld-cols">
+                <span class="mld-col is-pk">🔑 Type</span>
+                <span class="mld-col">Marque</span>
+                <span class="mld-col">Puissance</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </details>
+    </div>
+  </div>
+
+  <div class="nav-buttons">
+    <button class="btn btn-secondary" onclick="show('home')">← Accueil</button>
+    <button class="btn btn-primary" onclick="show('mld')">Module 2 : MLD →</button>
+  </div>
+</section>
+
+<!-- ============ MODULE 2 : MLD ============ -->
+<section id="mld" class="section">
+  <div class="progress-bar">
+    <div class="progress-step done" onclick="show('home')"></div>
+    <div class="progress-step done" onclick="show('mcd')"></div>
+    <div class="progress-step active"></div>
+    <div class="progress-step" onclick="show('mpd')"></div>
+    <div class="progress-step" onclick="show('sql')"></div>
+  </div>
+
+  <div class="section-header">
+    <div class="section-tag" style="--accent:#ff6b9d">Module 02</div>
+    <h2 class="section-title">MCD <span style="color:var(--accent2)">→</span><br>Modèle Logique</h2>
+    <p class="section-intro">Le MLD transforme le MCD en tables concrètes. Il existe 3 règles de transformation selon la cardinalité de chaque association.</p>
+  </div>
+
+  <!-- RÈGLES -->
+  <div class="card">
+    <div class="card-title">📋 Les 3 Règles de Transformation</div>
+    <table class="rules-table">
+      <tr><th>Cas MCD</th><th>Transformation MLD</th><th>Contrainte</th></tr>
+      <tr>
+        <td>1 — N</td>
+        <td>La PK du côté "1" migre en FK côté "N"</td>
+        <td>Si min=1 côté N → FK NOT NULL</td>
+      </tr>
+      <tr>
+        <td>N — N</td>
+        <td>L'association devient une table à part entière avec les 2 PK comme clé composite</td>
+        <td>Attributs de l'association dans cette table</td>
+      </tr>
+      <tr>
+        <td>1 — 1</td>
+        <td>La FK migre vers le côté "dépendant" avec UNIQUE</td>
+        <td>FK UNIQUE NOT NULL</td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- RÈGLE 1 : 1-N -->
+  <div class="card">
+    <div class="card-title">1️⃣ Règle 1 — Association 1-N</div>
+    <div class="diagram-container">
+      <p style="text-align:center;font-size:0.75rem;color:var(--muted);margin-bottom:1.2rem;font-family:'Space Mono',monospace;text-transform:uppercase">Exemple : Étudiant inscrit dans une Université</p>
+      <div class="diagram-row" style="margin-bottom:1.5rem">
+        <div class="entity-box">
+          <div class="entity-name" style="background:#ff6b9d">ÉTUDIANT</div>
+          <div class="entity-attrs">
+            <span class="pk">🔑 numEtudiant</span>
+            <span class="attr">· nomEtudiant</span>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:0.2rem">
+          <div class="cardinality">1,N</div>
+          <div class="relation-box">est inscrit</div>
+          <div class="cardinality">1,1</div>
+        </div>
+        <div class="entity-box">
+          <div class="entity-name" style="background:#ff6b9d">UNIVERSITÉ</div>
+          <div class="entity-attrs">
+            <span class="pk">🔑 nomUniv</span>
+            <span class="attr">· pays</span>
+          </div>
+        </div>
+      </div>
+      <div style="text-align:center;font-size:1.2rem;color:var(--accent2);margin:0.8rem 0">↓ Transformation MLD</div>
+      <div class="diagram-row">
+        <div class="entity-box">
+          <div class="entity-name" style="background:#4a4a6a">ÉTUDIANT</div>
+          <div class="entity-attrs">
+            <span class="pk">🔑 numEtudiant</span>
+            <span class="fk">🔗 nomUniv (FK)</span>
+            <span class="attr">· nomEtudiant</span>
+          </div>
+        </div>
+        <div class="arrow" style="color:var(--accent2)">←</div>
+        <div class="entity-box">
+          <div class="entity-name" style="background:#4a4a6a">UNIVERSITÉ</div>
+          <div class="entity-attrs">
+            <span class="pk">🔑 nomUniv</span>
+            <span class="attr">· pays</span>
+          </div>
+        </div>
+      </div>
+      <p style="text-align:center;font-size:0.78rem;color:var(--accent2);margin-top:0.8rem">La PK de UNIVERSITÉ migre en FK dans ÉTUDIANT (côté N)</p>
+    </div>
+  </div>
+
+  <!-- RÈGLE 2 : N-N -->
+  <div class="card">
+    <div class="card-title">2️⃣ Règle 2 — Association N-N</div>
+    <div class="diagram-container">
+      <p style="text-align:center;font-size:0.75rem;color:var(--muted);margin-bottom:1.2rem;font-family:'Space Mono',monospace;text-transform:uppercase">Exemple : Commande contient des Produits</p>
+      <div class="diagram-row" style="margin-bottom:1.5rem">
+        <div class="entity-box">
+          <div class="entity-name" style="background:#6c63ff">COMMANDE</div>
+          <div class="entity-attrs">
+            <span class="pk">🔑 numCommande</span>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:0.2rem">
+          <div class="cardinality">1,N</div>
+          <div class="relation-box" style="border-color:#4f46e5;color:#4f46e5;background:rgba(79,70,229,0.08)">contenir</div>
+          <div class="cardinality">0,N</div>
+        </div>
+        <div class="entity-box">
+          <div class="entity-name" style="background:#6c63ff">PRODUIT</div>
+          <div class="entity-attrs">
+            <span class="pk">🔑 reference</span>
+            <span class="attr">· prix</span>
+          </div>
+        </div>
+      </div>
+      <div style="text-align:center;font-size:1.2rem;color:var(--accent1);margin:0.8rem 0">↓ Transformation MLD</div>
+      <div class="diagram-row">
+        <div class="entity-box">
+          <div class="entity-name" style="background:#4a4a6a">COMMANDE</div>
+          <div class="entity-attrs">
+            <span class="pk">🔑 numCommande</span>
+          </div>
+        </div>
+        <div class="arrow">←→</div>
+        <div class="entity-box" style="border-color:#6c63ff">
+          <div class="entity-name" style="background:#6c63ff">CONTIENT</div>
+          <div class="entity-attrs">
+            <span class="fk">🔗 numCommande (FK)</span>
+            <span class="fk">🔗 reference (FK)</span>
+            <span class="attr">· quantite</span>
+            <span class="pk" style="font-size:0.65rem">PK = (numCommande, reference)</span>
+          </div>
+        </div>
+        <div class="arrow">←→</div>
+        <div class="entity-box">
+          <div class="entity-name" style="background:#4a4a6a">PRODUIT</div>
+          <div class="entity-attrs">
+            <span class="pk">🔑 reference</span>
+          </div>
+        </div>
+      </div>
+      <p style="text-align:center;font-size:0.78rem;color:var(--accent1);margin-top:0.8rem">L'association devient une TABLE avec les 2 PK comme clé composite</p>
+    </div>
+  </div>
+
+  <!-- RÈGLE 3 : 1-1 -->
+  <div class="card">
+    <div class="card-title">3️⃣ Règle 3 — Association 1-1</div>
+    <div class="callout callout-info">
+      <span class="callout-icon">💡</span>
+      <div>La FK migre vers le côté dépendant avec la contrainte <strong>UNIQUE</strong> pour garantir le 1-1. Ex : une Commande génère exactement 1 Facture → la FK va dans FACTURE avec UNIQUE.</div>
+    </div>
+    <div class="code-block">
+      <div class="code-label">MLD</div>
+<span class="cm">-- Commande génère 1 Facture (1-1)</span>
+<span class="kw">COMMANDE</span>(<u>NumCommande</u> PK, IdClient FK, ...)
+<span class="kw">FACTURE</span>(<u>NumFacture</u> PK, <span class="type">NumCommande FK UNIQUE NOT NULL</span>, ...)
+    </div>
+  </div>
+
+  <!-- ASSOCIATIONS RÉFLEXIVES -->
+  <div class="card">
+    <div class="card-title">🔄 Associations Réflexives</div>
+    <p style="font-size:0.9rem;color:var(--muted);line-height:1.6;margin-bottom:1rem">Une entité peut avoir une relation avec elle-même. Ex : un Employé a un supérieur qui est aussi un Employé.</p>
+    <div class="callout callout-success">
+      <span class="callout-icon">✅</span>
+      <div>En MLD, on garde <strong>une seule table</strong> mais on ajoute un attribut auto-référençant :<br>
+      <code>EMPLOYE(<u>idEmploye</u>, nom, <strong>idSupervieur FK → EMPLOYE</strong>)</code></div>
+    </div>
+  </div>
+
+  <!-- ===================== RÉVISION MLD ===================== -->
+  <div class="review-section">
+    <div class="review-header">
+      <div class="review-icon">🧠</div>
+      <h3>Session de Révision — MLD</h3>
+    </div>
+
+    <div class="keywords-grid" id="kw-mld">
+      <span class="keyword kw-chip" data-kw="Clé Primaire (PK)" style="color:#ff6b9d;border-color:#ff6b9d30">Clé Primaire (PK)</span>
+      <span class="keyword kw-chip" data-kw="Clé Étrangère (FK)" style="color:#6c63ff;border-color:#6c63ff30">Clé Étrangère (FK)</span>
+      <span class="keyword kw-chip" data-kw="NOT NULL" style="color:#00d4aa;border-color:#00d4aa30">NOT NULL</span>
+      <span class="keyword kw-chip" data-kw="UNIQUE" style="color:#ffa94d;border-color:#ffa94d30">UNIQUE</span>
+      <span class="keyword kw-chip" data-kw="Clé composite" style="color:#ff6b9d;border-color:#ff6b9d30">Clé composite</span>
+      <span class="keyword kw-chip" data-kw="Migration de clé" style="color:#6c63ff;border-color:#6c63ff30">Migration de clé</span>
+      <span class="keyword kw-chip" data-kw="Contrainte d'intégrité" style="color:#00d4aa;border-color:#00d4aa30">Contrainte d'intégrité</span>
+      <span class="keyword kw-chip" data-kw="Règle 1-N / N-N / 1-1" style="color:#ffa94d;border-color:#ffa94d30">Règle 1-N / N-N / 1-1</span>
+    </div>
+    <button class="flashcard-mode-btn" onclick="startFlashcards('mld')">🃏 Mode Flashcards — révise ces concepts</button>
+
+    <div class="divider"></div>
+
+    <div class="exercise">
+      <div class="exercise-label">✏️ Exercice 1 — Transformer MCD en MLD</div>
+      <p>Donne le MLD complet pour : CLIENT (0,N) — passer — (1,1) COMMANDE (1,N) — contenir — (0,N) PRODUIT. La relation contenir a l'attribut "quantite".</p>
+      <details class="answer">
+        <summary><span class="summary-arrow">▶</span> Voir la correction</summary>
+        <div class="answer-content">
+          <table class="ans-table" style="margin-bottom:1rem">
+            <tr><th>Association</th><th>Cardinalité</th><th>Règle</th><th>Résultat</th></tr>
+            <tr><td>CLIENT — passer — COMMANDE</td><td class="pk">(0,N) — (1,1)</td><td class="rule">1-N</td><td class="attr">FK idClient dans COMMANDE</td></tr>
+            <tr><td>COMMANDE — contenir — PRODUIT</td><td class="pk">(1,N) — (0,N)</td><td class="rule">N-N</td><td class="attr">Table CONTIENT</td></tr>
+          </table>
+          <strong>MLD résultant :</strong>
+          <div class="mld-schema">
+            <div class="mld-table-box">
+              <div class="mld-table-name green">CLIENT</div>
+              <div class="mld-cols">
+                <span class="mld-col is-pk">🔑 idClient</span>
+                <span class="mld-col">nomClient</span>
+              </div>
+            </div>
+            <div class="mld-table-box">
+              <div class="mld-table-name">COMMANDE</div>
+              <div class="mld-cols">
+                <span class="mld-col is-pk">🔑 numCommande</span>
+                <span class="mld-col is-fk">🔗 idClient FK NOT NULL</span>
+              </div>
+              <div class="mld-rule-note">→ Règle 1-N : PK de CLIENT migre ici (côté N)</div>
+            </div>
+            <div class="mld-table-box">
+              <div class="mld-table-name green">PRODUIT</div>
+              <div class="mld-cols">
+                <span class="mld-col is-pk">🔑 reference</span>
+                <span class="mld-col">nom</span>
+                <span class="mld-col">prix</span>
+              </div>
+            </div>
+            <div class="mld-table-box">
+              <div class="mld-table-name orange">CONTIENT</div>
+              <div class="mld-cols">
+                <span class="mld-col is-pkfk">🔑🔗 numCommande FK</span>
+                <span class="mld-col is-pkfk">🔑🔗 reference FK</span>
+                <span class="mld-col">quantite</span>
+              </div>
+              <div class="mld-rule-note">→ Règle N-N : table de jointure, PK composite (numCommande + reference)</div>
+            </div>
+          </div>
+        </div>
+      </details>
+    </div>
+
+    <div class="exercise">
+      <div class="exercise-label">✏️ Exercice 2 — Cas pratique</div>
+      <p>Un PATIENT (SECU PK) cotise à une MUTUELLE (codeMutuelle PK). Cardinalités : Patient (0,1) — Mutuelle (1,N). Donne le MLD.</p>
+      <details class="answer">
+        <summary><span class="summary-arrow">▶</span> Voir la correction</summary>
+        <div class="answer-content">
+          <table class="ans-table" style="margin-bottom:1rem">
+            <tr><th>Association</th><th>Cardinalités</th><th>Type</th><th>Action</th></tr>
+            <tr>
+              <td>PATIENT — cotise — MUTUELLE</td>
+              <td class="pk">Patient (0,1) — Mutuelle (1,N)</td>
+              <td class="rule">1-N</td>
+              <td class="attr">FK codeMutuelle dans PATIENT</td>
+            </tr>
+          </table>
+          <strong>MLD résultant :</strong>
+          <div class="mld-schema">
+            <div class="mld-table-box">
+              <div class="mld-table-name green">MUTUELLE</div>
+              <div class="mld-cols">
+                <span class="mld-col is-pk">🔑 codeMutuelle</span>
+                <span class="mld-col">nomMutuelle</span>
+                <span class="mld-col">adresseMutuelle</span>
+              </div>
+            </div>
+            <div class="mld-table-box">
+              <div class="mld-table-name">PATIENT</div>
+              <div class="mld-cols">
+                <span class="mld-col is-pk">🔑 SECU</span>
+                <span class="mld-col is-fk">🔗 codeMutuelle FK</span>
+                <span class="mld-col">nomPatient</span>
+                <span class="mld-col">prenomPatient</span>
+              </div>
+              <div class="mld-rule-note">→ FK nullable (sans NOT NULL) car cardinalité min = 0 côté Patient : un patient peut ne pas avoir de mutuelle</div>
+            </div>
+          </div>
+        </div>
+      </details>
+    </div>
+
+    <div class="exercise">
+      <div class="exercise-label">✏️ Exercice 3 — Identifier l'erreur</div>
+      <p>Quelqu'un propose : COMMANDE(<u>numCommande</u>) et FACTURE(<u>numFacture</u>). La relation est 1-1. Il ne met pas de FK. Qu'est-ce qui manque et où doit-elle aller ?</p>
+      <details class="answer">
+        <summary><span class="summary-arrow">▶</span> Voir la correction</summary>
+        <div class="answer-content">
+          <strong style="color:#c0392b">❌ Il manque la clé étrangère pour matérialiser la relation 1-1.</strong>
+          <table class="ans-table" style="margin:0.8rem 0">
+            <tr><th>Règle 1-1</th><th>Principe</th></tr>
+            <tr><td class="rule">Où mettre la FK ?</td><td class="attr">Dans la table <strong>dépendante</strong> — ici FACTURE dépend de COMMANDE</td></tr>
+            <tr><td class="rule">Quelle contrainte ?</td><td class="attr"><strong>UNIQUE NOT NULL</strong> pour garantir qu'une commande = 1 seule facture</td></tr>
+          </table>
+          <strong>MLD corrigé :</strong>
+          <div class="mld-schema">
+            <div class="mld-table-box">
+              <div class="mld-table-name green">COMMANDE</div>
+              <div class="mld-cols">
+                <span class="mld-col is-pk">🔑 numCommande</span>
+              </div>
+            </div>
+            <div class="mld-table-box">
+              <div class="mld-table-name pink">FACTURE</div>
+              <div class="mld-cols">
+                <span class="mld-col is-pk">🔑 numFacture</span>
+                <span class="mld-col is-fk">🔗 numCommande FK UNIQUE NOT NULL</span>
+                <span class="mld-col">montant</span>
+                <span class="mld-col">date</span>
+              </div>
+              <div class="mld-rule-note">→ UNIQUE garantit max 1 facture par commande. NOT NULL garantit toute facture a une commande.</div>
+            </div>
+          </div>
+        </div>
+      </details>
+    </div>
+  </div>
+
+  <div class="nav-buttons">
+    <button class="btn btn-secondary" onclick="show('mcd')">← Module 1</button>
+    <button class="btn btn-primary" onclick="show('mpd')">Module 3 : MPD →</button>
+  </div>
+</section>
+
+<!-- ============ MODULE 3 : MPD & MySQL ============ -->
+<section id="mpd" class="section">
+  <div class="progress-bar">
+    <div class="progress-step done" onclick="show('home')"></div>
+    <div class="progress-step done" onclick="show('mcd')"></div>
+    <div class="progress-step done" onclick="show('mld')"></div>
+    <div class="progress-step active"></div>
+    <div class="progress-step" onclick="show('sql')"></div>
+  </div>
+
+  <div class="section-header">
+    <div class="section-tag" style="--accent:#0d9e7e">Module 03</div>
+    <h2 class="section-title">MPD & <span style="color:var(--accent3)">MySQL</span></h2>
+    <p class="section-intro">Le Modèle Physique des Données traduit le MLD dans le langage d'un SGBD précis : ici MySQL. On définit les types, les contraintes, et on écrit le SQL.</p>
+  </div>
+
+  <!-- CONVENTIONS -->
+  <div class="card">
+    <div class="card-title">📏 Conventions MySQL</div>
+    <div class="concept-grid">
+      <div class="concept-card" style="--c:#00d4aa">
+        <h4>Nommage</h4>
+        <p>Tout en <strong>minuscules</strong>, alphabet anglais, <strong>underscores</strong> à la place des espaces. Max 20 caractères (convention Oracle).</p>
+      </div>
+      <div class="concept-card" style="--c:#6c63ff">
+        <h4>Casse</h4>
+        <p>MySQL est <strong>sensible à la casse</strong> : <code>student</code> ≠ <code>Student</code>. Toujours utiliser les minuscules.</p>
+      </div>
+      <div class="concept-card" style="--c:#ffa94d">
+        <h4>Préfixage</h4>
+        <p>Préfixer les attributs par un abrégé du nom de table : <code>std_name</code> (student), <code>unv_name</code> (university).</p>
+      </div>
+    </div>
+    <div class="callout callout-info">
+      <span class="callout-icon">💡</span>
+      <div>Le préfixage permet d'identifier immédiatement les <strong>clés étrangères</strong> dans les requêtes multi-tables. <code>unv_name</code> dans student → c'est une FK vers university.</div>
+    </div>
+  </div>
+
+  <!-- TYPES DE DONNÉES -->
+  <div class="card">
+    <div class="card-title">🗃️ Les Types de Données MySQL</div>
+    <div class="types-grid">
+      <div class="type-card" style="--tc:#6c63ff">
+        <div class="type-name">VARCHAR(n)</div>
+        <div class="type-desc">Chaîne de caractères de longueur variable. n = nombre max de caractères.</div>
+        <div class="type-example">std_name VARCHAR(30)</div>
+      </div>
+      <div class="type-card" style="--tc:#ff6b9d">
+        <div class="type-name">ENUM('a','b',...)</div>
+        <div class="type-desc">Liste prédéfinie de valeurs autorisées.</div>
+        <div class="type-example">size ENUM('S','M','L')</div>
+      </div>
+      <div class="type-card" style="--tc:#ffa94d">
+        <div class="type-name">INT / INTEGER</div>
+        <div class="type-desc">Entier standard. Plage : -2 147 483 648 à 2 147 483 647.</div>
+        <div class="type-example">std_id INT</div>
+      </div>
+      <div class="type-card" style="--tc:#00d4aa">
+        <div class="type-name">TINYINT</div>
+        <div class="type-desc">Petit entier : -128 à 127. Utile pour les âges, notes…</div>
+        <div class="type-example">note TINYINT</div>
+      </div>
+      <div class="type-card" style="--tc:#6c63ff">
+        <div class="type-name">DECIMAL(p,s)</div>
+        <div class="type-desc">Nombre exact. p = précision totale, s = chiffres après virgule.</div>
+        <div class="type-example">prix DECIMAL(10,2)</div>
+      </div>
+      <div class="type-card" style="--tc:#ff6b9d">
+        <div class="type-name">DATE / DATETIME</div>
+        <div class="type-desc">Date seule ou date+heure.</div>
+        <div class="type-example">date_debut DATE</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SQL DE BASE -->
+  <div class="card">
+    <div class="card-title">⌨️ Les Commandes SQL Essentielles</div>
+
+    <p style="font-size:0.85rem;color:var(--muted);margin-bottom:1rem">Voici la structure complète pour créer et peupler une base. L'ordre est crucial !</p>
+
+    <div class="code-block" style="margin-bottom:1.2rem">
+      <div class="code-label">CREATE DATABASE</div>
+<span class="kw">CREATE DATABASE</span> education<span class="str">;</span>
+    </div>
+
+    <div class="code-block" style="margin-bottom:1.2rem">
+      <div class="code-label">CREATE TABLE</div>
+<span class="kw">CREATE TABLE</span> university(
+  unv_name <span class="type">VARCHAR</span>(50) <span class="fn">NOT NULL PRIMARY KEY</span>,
+  unv_country <span class="type">VARCHAR</span>(20) <span class="fn">NOT NULL</span>,
+  unv_address <span class="type">VARCHAR</span>(90) <span class="fn">NOT NULL</span>
+)<span class="str">;</span>
+
+<span class="kw">CREATE TABLE</span> student(
+  std_id <span class="type">INT</span> <span class="fn">NOT NULL PRIMARY KEY</span>,
+  unv_name <span class="type">VARCHAR</span>(50),
+  std_name <span class="type">VARCHAR</span>(30) <span class="fn">NOT NULL</span>,
+  std_nationality <span class="type">VARCHAR</span>(20) <span class="fn">NOT NULL</span>,
+  <span class="fn">FOREIGN KEY</span> (unv_name) <span class="fn">REFERENCES</span> university(unv_name)
+)<span class="str">;</span>
+    </div>
+
+    <div class="callout callout-warning">
+      <span class="callout-icon">⚠️</span>
+      <div><strong>Ordre de création !</strong> Toujours créer la table "parent" (university) AVANT la table "enfant" (student) qui la référence. Sinon : erreur de FK.</div>
+    </div>
+
+    <div class="code-block" style="margin-bottom:1.2rem">
+      <div class="code-label">INSERT INTO</div>
+<span class="kw">INSERT INTO</span> university <span class="kw">VALUES</span>
+  (<span class="str">'UTT'</span>, <span class="str">'France'</span>, <span class="str">'Troyes'</span>),
+  (<span class="str">'PSB'</span>, <span class="str">'France'</span>, <span class="str">'Paris'</span>)<span class="str">;</span>
+
+<span class="kw">INSERT INTO</span> student <span class="kw">VALUES</span>
+  (<span class="num">123</span>, <span class="str">'UTT'</span>, <span class="str">'Alexander'</span>, <span class="str">'American'</span>),
+  (<span class="num">345</span>, <span class="str">'PSB'</span>, <span class="str">'Marie'</span>, <span class="str">'French'</span>)<span class="str">;</span>
+    </div>
+
+    <div class="code-block" style="margin-bottom:1.2rem">
+      <div class="code-label">UPDATE</div>
+<span class="kw">UPDATE</span> university
+<span class="kw">SET</span> unv_address = <span class="str">'San Francisco'</span>
+<span class="kw">WHERE</span> unv_name = <span class="str">'Stanford'</span><span class="str">;</span>
+    </div>
+
+    <div class="code-block">
+      <div class="code-label">ALTER TABLE</div>
+<span class="kw">ALTER TABLE</span> student
+<span class="kw">ADD</span> std_age <span class="type">INTEGER</span><span class="str">;</span>
+    </div>
+  </div>
+
+  <!-- ===================== RÉVISION MPD ===================== -->
+  <div class="review-section">
+    <div class="review-header">
+      <div class="review-icon">🧠</div>
+      <h3>Session de Révision — MPD & MySQL</h3>
+    </div>
+
+    <div class="keywords-grid" id="kw-mpd">
+      <span class="keyword kw-chip" data-kw="VARCHAR(n)" style="color:#00d4aa;border-color:#00d4aa30">VARCHAR(n)</span>
+      <span class="keyword kw-chip" data-kw="INT / DECIMAL" style="color:#6c63ff;border-color:#6c63ff30">INT / DECIMAL</span>
+      <span class="keyword kw-chip" data-kw="PRIMARY KEY" style="color:#ff6b9d;border-color:#ff6b9d30">PRIMARY KEY</span>
+      <span class="keyword kw-chip" data-kw="FOREIGN KEY" style="color:#ffa94d;border-color:#ffa94d30">FOREIGN KEY</span>
+      <span class="keyword kw-chip" data-kw="REFERENCES" style="color:#00d4aa;border-color:#00d4aa30">REFERENCES</span>
+      <span class="keyword kw-chip" data-kw="NOT NULL" style="color:#6c63ff;border-color:#6c63ff30">NOT NULL</span>
+      <span class="keyword kw-chip" data-kw="CREATE TABLE" style="color:#ff6b9d;border-color:#ff6b9d30">CREATE TABLE</span>
+      <span class="keyword kw-chip" data-kw="INSERT INTO VALUES" style="color:#ffa94d;border-color:#ffa94d30">INSERT INTO VALUES</span>
+      <span class="keyword kw-chip" data-kw="UPDATE SET WHERE" style="color:#00d4aa;border-color:#00d4aa30">UPDATE SET WHERE</span>
+      <span class="keyword kw-chip" data-kw="ALTER TABLE ADD" style="color:#6c63ff;border-color:#6c63ff30">ALTER TABLE ADD</span>
+      <span class="keyword kw-chip" data-kw="DROP TABLE" style="color:#ff6b9d;border-color:#ff6b9d30">DROP TABLE</span>
+    </div>
+    <button class="flashcard-mode-btn" onclick="startFlashcards('mpd')">🃏 Mode Flashcards — révise ces concepts</button>
+
+    <div class="divider"></div>
+
+    <div class="exercise">
+      <div class="exercise-label">✏️ Exercice 1 — Quel type choisir ?</div>
+      <p>Pour chacun, choisis le type MySQL le plus adapté :<br>
+      a) Le prix d'un produit (ex: 12.99€)<br>
+      b) Le nom d'un client (max 50 caractères)<br>
+      c) La taille d'un vêtement parmi XS/S/M/L/XL<br>
+      d) L'identifiant auto-incrémenté d'un étudiant<br>
+      e) La date de naissance</p>
+      <details class="answer">
+        <summary><span class="summary-arrow">▶</span> Voir la correction</summary>
+        <div class="answer-content">
+          <table class="ans-table">
+            <tr><th>Cas</th><th>Type MySQL</th><th>Pourquoi</th></tr>
+            <tr><td>a) Prix produit (12.99€)</td><td class="pk">DECIMAL(10,2)</td><td class="attr">Montant exact, 2 décimales — jamais FLOAT pour l'argent</td></tr>
+            <tr><td>b) Nom client (50 car. max)</td><td class="pk">VARCHAR(50)</td><td class="attr">Texte de longueur variable</td></tr>
+            <tr><td>c) Taille XS/S/M/L/XL</td><td class="pk">ENUM('XS','S','M','L','XL')</td><td class="attr">Liste fermée de valeurs autorisées</td></tr>
+            <tr><td>d) Identifiant auto</td><td class="pk">INT AUTO_INCREMENT</td><td class="attr">Entier généré automatiquement</td></tr>
+            <tr><td>e) Date de naissance</td><td class="pk">DATE</td><td class="attr">Format YYYY-MM-DD, pas de temps</td></tr>
+          </table>
+        </div>
+      </details>
+    </div>
+
+    <div class="exercise">
+      <div class="exercise-label">✏️ Exercice 2 — Écrire le CREATE TABLE</div>
+      <p>Écris le SQL pour créer la table PRODUIT avec : reference (PK, VARCHAR 20), nom (VARCHAR 50, obligatoire), prix (décimal 10,2), idCategorie (FK vers CATEGORIE).</p>
+      <details class="answer">
+        <summary><span class="summary-arrow">▶</span> Voir la correction</summary>
+        <div class="answer-content">
+          <div class="mld-schema" style="margin-bottom:0.8rem">
+            <div class="mld-table-box">
+              <div class="mld-table-name orange">PRODUIT</div>
+              <div class="mld-cols">
+                <span class="mld-col is-pk">🔑 pro_reference VARCHAR(20)</span>
+                <span class="mld-col">pro_nom VARCHAR(50) NOT NULL</span>
+                <span class="mld-col">pro_prix DECIMAL(10,2)</span>
+                <span class="mld-col is-fk">🔗 cat_id INT FK → CATEGORIE</span>
+              </div>
+            </div>
+          </div>
+          <div class="ans-code"><span class="c-kw">CREATE TABLE</span> produit(
+  pro_reference <span class="c-fn">VARCHAR</span>(20) <span class="c-kw">NOT NULL PRIMARY KEY</span>,
+  pro_nom       <span class="c-fn">VARCHAR</span>(50) <span class="c-kw">NOT NULL</span>,
+  pro_prix      <span class="c-fn">DECIMAL</span>(10,2),
+  cat_id        <span class="c-fn">INT</span>,
+  <span class="c-kw">FOREIGN KEY</span> (cat_id) <span class="c-kw">REFERENCES</span> categorie(cat_id)
+);</div>
+          <div style="background:#fffbf0;border:1px solid #f0d090;border-radius:6px;padding:0.5rem 0.8rem;margin-top:0.5rem;font-size:0.8rem">
+            ⚠️ Il faut avoir créé la table <strong>categorie AVANT</strong> produit, sinon la FK échoue.
+          </div>
+        </div>
+      </details>
+    </div>
+
+    <div class="exercise">
+      <div class="exercise-label">✏️ Exercice 3 — Debug SQL</div>
+      <p>Ce code génère une erreur. Pourquoi ?<br>
+      <code style="background:#f0eee8;color:#c0392b;padding:0.3rem 0.6rem;border-radius:4px;font-size:0.8rem;border:1px solid #e0d8cc">DROP TABLE university;</code> alors que student a une FK vers university.</p>
+      <details class="answer">
+        <summary><span class="summary-arrow">▶</span> Voir la correction</summary>
+        <div class="answer-content">
+          <strong style="color:#c0392b">❌ Erreur : contrainte d'intégrité référentielle violée.</strong>
+          <table class="ans-table" style="margin:0.8rem 0">
+            <tr><th>Problème</th><th>Explication</th></tr>
+            <tr><td class="rule">Pourquoi ça échoue ?</td><td class="attr">La table <strong>student</strong> a une FOREIGN KEY qui référence <strong>university</strong>. MySQL interdit de supprimer une table référencée.</td></tr>
+            <tr><td class="rule">Règle</td><td class="attr">Toujours supprimer les tables <strong>enfants</strong> avant les tables <strong>parents</strong>.</td></tr>
+          </table>
+          <strong>✅ Ordre correct :</strong>
+          <div class="ans-code"><span class="c-kw">DROP TABLE</span> student;     <span class="c-cm">-- enfant d'abord</span>
+<span class="c-kw">DROP TABLE</span> university;  <span class="c-cm">-- parent ensuite</span></div>
+        </div>
+      </details>
+    </div>
+  </div>
+
+  <div class="nav-buttons">
+    <button class="btn btn-secondary" onclick="show('mld')">← Module 2</button>
+    <button class="btn btn-primary" onclick="show('sql')">Module 4 : SQL →</button>
+  </div>
+</section>
+
+<!-- ============ MODULE 4 : REQUÊTES SQL ============ -->
+<section id="sql" class="section">
+  <div class="progress-bar">
+    <div class="progress-step done" onclick="show('home')"></div>
+    <div class="progress-step done" onclick="show('mcd')"></div>
+    <div class="progress-step done" onclick="show('mld')"></div>
+    <div class="progress-step done" onclick="show('mpd')"></div>
+    <div class="progress-step active"></div>
+  </div>
+
+  <div class="section-header">
+    <div class="section-tag" style="--accent:#c97a1a">Module 04</div>
+    <h2 class="section-title">Requêtes <span style="color:var(--accent4)">SQL</span></h2>
+    <p class="section-intro">On travaille sur une base de location de films (~1000 films) avec les tables : film, customer, payment, inventory, actor, staff. Toutes les requêtes s'écrivent sur papier à l'examen.</p>
+  </div>
+
+  <!-- SELECT DE BASE -->
+  <div class="card">
+    <div class="card-title">1️⃣ SELECT — La base de tout</div>
+
+    <div class="query-breakdown">
+      <div class="qb-line">
+        <span class="qb-kw">SELECT</span>
+        <span class="qb-val">colonne1, colonne2</span>
+        <span class="qb-note">ou * pour tout afficher</span>
+      </div>
+      <div class="qb-line">
+        <span class="qb-kw">FROM</span>
+        <span class="qb-val">nom_table</span>
+        <span class="qb-note">table source</span>
+      </div>
+      <div class="qb-line" style="opacity:0.5">
+        <span class="qb-kw">WHERE</span>
+        <span class="qb-val">condition</span>
+        <span class="qb-note">optionnel</span>
+      </div>
+      <div class="qb-line" style="opacity:0.5">
+        <span class="qb-kw">ORDER BY</span>
+        <span class="qb-val">colonne ASC/DESC</span>
+        <span class="qb-note">optionnel</span>
+      </div>
+      <div class="qb-line" style="opacity:0.5">
+        <span class="qb-kw">LIMIT</span>
+        <span class="qb-val">n</span>
+        <span class="qb-note">optionnel</span>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-label">Exemples pratiques</div>
+<span class="cm">-- Tous les titres de films</span>
+<span class="kw">SELECT</span> title <span class="kw">FROM</span> film<span class="str">;</span>
+
+<span class="cm">-- ID, nom, prénom, email des clients</span>
+<span class="kw">SELECT</span> customer_id, last_name, first_name, email
+<span class="kw">FROM</span> customer<span class="str">;</span>
+
+<span class="cm">-- Films par ordre alphabétique inverse</span>
+<span class="kw">SELECT</span> title <span class="kw">FROM</span> film
+<span class="kw">ORDER BY</span> title <span class="fn">DESC</span><span class="str">;</span>
+
+<span class="cm">-- Les 10 premiers films</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> film <span class="kw">LIMIT</span> <span class="num">10</span><span class="str">;</span>
+    </div>
+  </div>
+
+  <!-- WHERE -->
+  <div class="card">
+    <div class="card-title">2️⃣ WHERE — Filtrer les résultats</div>
+    <table class="rules-table">
+      <tr><th>Opérateur</th><th>Signification</th><th>Exemple</th></tr>
+      <tr><td>=</td><td>Égal</td><td>WHERE rating = 'PG'</td></tr>
+      <tr><td>!=</td><td>Différent</td><td>WHERE rating != 'R'</td></tr>
+      <tr><td>&gt; / &lt;</td><td>Supérieur / Inférieur</td><td>WHERE rental_rate &gt; 2.99</td></tr>
+      <tr><td>&gt;= / &lt;=</td><td>Sup ou égal / Inf ou égal</td><td>WHERE length &gt;= 90</td></tr>
+      <tr><td>AND</td><td>Les deux conditions vraies</td><td>WHERE rating = 'PG' AND length &gt; 100</td></tr>
+      <tr><td>OR</td><td>Au moins une vraie</td><td>WHERE rating = 'PG' OR rating = 'G'</td></tr>
+      <tr><td>LIKE '%x%'</td><td>Contient x</td><td>WHERE title LIKE '%love%'</td></tr>
+      <tr><td>BETWEEN a AND b</td><td>Entre a et b inclus</td><td>WHERE length BETWEEN 60 AND 120</td></tr>
+      <tr><td>IS NULL / IS NOT NULL</td><td>Valeur nulle ou non</td><td>WHERE email IS NOT NULL</td></tr>
+    </table>
+
+    <div class="code-block">
+      <div class="code-label">Exemples</div>
+<span class="cm">-- Films dont le titre contient "LOVE"</span>
+<span class="kw">SELECT</span> title <span class="kw">FROM</span> film
+<span class="kw">WHERE</span> title <span class="fn">LIKE</span> <span class="str">'%LOVE%'</span><span class="str">;</span>
+
+<span class="cm">-- Films de durée entre 90 et 120 min</span>
+<span class="kw">SELECT</span> title, length <span class="kw">FROM</span> film
+<span class="kw">WHERE</span> length <span class="fn">BETWEEN</span> <span class="num">90</span> <span class="fn">AND</span> <span class="num">120</span><span class="str">;</span>
+
+<span class="cm">-- Clients avec email</span>
+<span class="kw">SELECT</span> first_name, last_name <span class="kw">FROM</span> customer
+<span class="kw">WHERE</span> email <span class="fn">IS NOT NULL</span><span class="str">;</span>
+    </div>
+  </div>
+
+  <!-- FONCTIONS D'AGRÉGATION -->
+  <div class="card">
+    <div class="card-title">3️⃣ Fonctions d'Agrégation</div>
+    <div class="concept-grid">
+      <div class="concept-card" style="--c:#6c63ff">
+        <h4>COUNT(*)</h4>
+        <p>Compte le nombre de lignes.</p>
+        <code style="font-size:0.75rem;color:var(--accent3)">SELECT COUNT(*) FROM film;</code>
+      </div>
+      <div class="concept-card" style="--c:#ff6b9d">
+        <h4>SUM(col)</h4>
+        <p>Somme des valeurs d'une colonne.</p>
+        <code style="font-size:0.75rem;color:var(--accent3)">SELECT SUM(amount) FROM payment;</code>
+      </div>
+      <div class="concept-card" style="--c:#ffa94d">
+        <h4>AVG(col)</h4>
+        <p>Moyenne des valeurs.</p>
+        <code style="font-size:0.75rem;color:var(--accent3)">SELECT AVG(rental_rate) FROM film;</code>
+      </div>
+      <div class="concept-card" style="--c:#00d4aa">
+        <h4>MAX / MIN</h4>
+        <p>Valeur maximale ou minimale.</p>
+        <code style="font-size:0.75rem;color:var(--accent3)">SELECT MAX(length) FROM film;</code>
+      </div>
+    </div>
+  </div>
+
+  <!-- DISTINCT & GROUP BY -->
+  <div class="card">
+    <div class="card-title">4️⃣ DISTINCT & GROUP BY</div>
+    <div class="code-block">
+      <div class="code-label">DISTINCT + GROUP BY</div>
+<span class="cm">-- Types de notations uniques dans la BDD</span>
+<span class="kw">SELECT DISTINCT</span> rating <span class="kw">FROM</span> film<span class="str">;</span>
+
+<span class="cm">-- Nombre de films par notation (rating)</span>
+<span class="kw">SELECT</span> rating, <span class="fn">COUNT</span>(*) <span class="kw">AS</span> nb_films
+<span class="kw">FROM</span> film
+<span class="kw">GROUP BY</span> rating
+<span class="kw">ORDER BY</span> nb_films <span class="fn">DESC</span><span class="str">;</span>
+
+<span class="cm">-- Total des paiements par client</span>
+<span class="kw">SELECT</span> customer_id, <span class="fn">SUM</span>(amount) <span class="kw">AS</span> total
+<span class="kw">FROM</span> payment
+<span class="kw">GROUP BY</span> customer_id
+<span class="kw">ORDER BY</span> total <span class="fn">DESC</span><span class="str">;</span>
+    </div>
+    <div class="callout callout-info">
+      <span class="callout-icon">💡</span>
+      <div>Règle : tout ce qui est dans le <strong>SELECT</strong> et qui n'est pas une fonction d'agrégation <strong>doit être dans le GROUP BY</strong>.</div>
+    </div>
+  </div>
+
+  <!-- ===================== RÉVISION SQL ===================== -->
+  <div class="review-section">
+    <div class="review-header">
+      <div class="review-icon">🧠</div>
+      <h3>Session de Révision — Requêtes SQL</h3>
+    </div>
+
+    <div class="keywords-grid" id="kw-sql">
+      <span class="keyword kw-chip" data-kw="SELECT FROM" style="color:#ffa94d;border-color:#ffa94d30">SELECT FROM</span>
+      <span class="keyword kw-chip" data-kw="WHERE" style="color:#6c63ff;border-color:#6c63ff30">WHERE</span>
+      <span class="keyword kw-chip" data-kw="ORDER BY ASC/DESC" style="color:#ff6b9d;border-color:#ff6b9d30">ORDER BY ASC/DESC</span>
+      <span class="keyword kw-chip" data-kw="LIMIT" style="color:#00d4aa;border-color:#00d4aa30">LIMIT</span>
+      <span class="keyword kw-chip" data-kw="DISTINCT" style="color:#ffa94d;border-color:#ffa94d30">DISTINCT</span>
+      <span class="keyword kw-chip" data-kw="COUNT / SUM / AVG" style="color:#6c63ff;border-color:#6c63ff30">COUNT / SUM / AVG</span>
+      <span class="keyword kw-chip" data-kw="MAX / MIN" style="color:#ff6b9d;border-color:#ff6b9d30">MAX / MIN</span>
+      <span class="keyword kw-chip" data-kw="GROUP BY" style="color:#00d4aa;border-color:#00d4aa30">GROUP BY</span>
+      <span class="keyword kw-chip" data-kw="LIKE % et _" style="color:#ffa94d;border-color:#ffa94d30">LIKE % et _</span>
+      <span class="keyword kw-chip" data-kw="BETWEEN AND" style="color:#6c63ff;border-color:#6c63ff30">BETWEEN AND</span>
+      <span class="keyword kw-chip" data-kw="IS NULL / IS NOT NULL" style="color:#ff6b9d;border-color:#ff6b9d30">IS NULL / IS NOT NULL</span>
+      <span class="keyword kw-chip" data-kw="AND / OR" style="color:#00d4aa;border-color:#00d4aa30">AND / OR</span>
+    </div>
+    <button class="flashcard-mode-btn" onclick="startFlashcards('sql')">🃏 Mode Flashcards — révise ces concepts</button>
+
+    <div class="divider"></div>
+
+    <div class="exercise">
+      <div class="exercise-label">✏️ Exercice 1 — Requête simple</div>
+      <p>Écris la requête pour afficher le titre et la durée de tous les films dont la durée est supérieure à 120 minutes, triés du plus long au plus court.</p>
+      <details class="answer">
+        <summary><span class="summary-arrow">▶</span> Voir la correction</summary>
+        <div class="answer-content">
+          <table class="ans-table" style="margin-bottom:0.8rem">
+            <tr><th>Clause</th><th>Rôle</th><th>Valeur ici</th></tr>
+            <tr><td class="c-kw" style="color:#c0392b;font-weight:700">SELECT</td><td class="attr">Colonnes à afficher</td><td class="pk">title, length</td></tr>
+            <tr><td class="c-kw" style="color:#c0392b;font-weight:700">FROM</td><td class="attr">Table source</td><td class="pk">film</td></tr>
+            <tr><td class="c-kw" style="color:#c0392b;font-weight:700">WHERE</td><td class="attr">Filtre les lignes</td><td class="pk">length &gt; 120</td></tr>
+            <tr><td class="c-kw" style="color:#c0392b;font-weight:700">ORDER BY</td><td class="attr">Trier du plus long au plus court</td><td class="pk">length DESC</td></tr>
+          </table>
+          <div class="ans-code"><span class="c-kw">SELECT</span> title, length
+<span class="c-kw">FROM</span> film
+<span class="c-kw">WHERE</span> length &gt; 120
+<span class="c-kw">ORDER BY</span> length <span class="c-fn">DESC</span>;</div>
+        </div>
+      </details>
+    </div>
+
+    <div class="exercise">
+      <div class="exercise-label">✏️ Exercice 2 — Fonctions d'agrégation</div>
+      <p>Écris la requête pour trouver :<br>
+      a) Le nombre total de films dans la base<br>
+      b) La durée moyenne des films<br>
+      c) Le prix de location le plus élevé</p>
+      <details class="answer">
+        <summary><span class="summary-arrow">▶</span> Voir la correction</summary>
+        <div class="answer-content">
+          <table class="ans-table" style="margin-bottom:0.8rem">
+            <tr><th>Question</th><th>Fonction</th><th>Résultat type</th></tr>
+            <tr><td>a) Nombre de films</td><td class="pk">COUNT(*)</td><td class="attr">Nombre entier ex: 1000</td></tr>
+            <tr><td>b) Durée moyenne</td><td class="pk">AVG(length)</td><td class="attr">Décimal ex: 115.27</td></tr>
+            <tr><td>c) Prix le plus élevé</td><td class="pk">MAX(rental_rate)</td><td class="attr">Décimal ex: 4.99</td></tr>
+          </table>
+          <div class="ans-code"><span class="c-cm">-- a) Nombre total de films</span>
+<span class="c-kw">SELECT</span> <span class="c-fn">COUNT</span>(*) <span class="c-kw">FROM</span> film;
+
+<span class="c-cm">-- b) Durée moyenne</span>
+<span class="c-kw">SELECT</span> <span class="c-fn">AVG</span>(length) <span class="c-kw">FROM</span> film;
+
+<span class="c-cm">-- c) Prix de location max</span>
+<span class="c-kw">SELECT</span> <span class="c-fn">MAX</span>(rental_rate) <span class="c-kw">FROM</span> film;</div>
+        </div>
+      </details>
+    </div>
+
+    <div class="exercise">
+      <div class="exercise-label">✏️ Exercice 3 — GROUP BY</div>
+      <p>Affiche le nombre de clients par pays (country), du pays qui en a le plus au moins. (Table : customer, utilise la colonne country.)</p>
+      <details class="answer">
+        <summary><span class="summary-arrow">▶</span> Voir la correction</summary>
+        <div class="answer-content">
+          <table class="ans-table" style="margin-bottom:0.8rem">
+            <tr><th>Clause</th><th>Rôle</th></tr>
+            <tr><td class="pk">SELECT country, COUNT(*)</td><td class="attr">Afficher le pays ET compter les lignes par groupe</td></tr>
+            <tr><td class="pk">GROUP BY country</td><td class="attr">Créer un groupe par pays</td></tr>
+            <tr><td class="pk">ORDER BY nb_clients DESC</td><td class="attr">Du plus grand au plus petit</td></tr>
+          </table>
+          <div class="ans-code"><span class="c-kw">SELECT</span> country, <span class="c-fn">COUNT</span>(*) <span class="c-kw">AS</span> nb_clients
+<span class="c-kw">FROM</span> customer
+<span class="c-kw">GROUP BY</span> country
+<span class="c-kw">ORDER BY</span> nb_clients <span class="c-fn">DESC</span>;</div>
+          <div style="background:#e8f4f0;border:1px solid #b8ddd5;border-radius:6px;padding:0.5rem 0.8rem;margin-top:0.6rem;font-size:0.8rem">
+            💡 <strong>Règle d'or GROUP BY :</strong> tout ce qui est dans SELECT et n'est pas une fonction d'agrégation DOIT être dans GROUP BY → ici <code>country</code>.
+          </div>
+        </div>
+      </details>
+    </div>
+
+    <div class="exercise">
+      <div class="exercise-label">✏️ Exercice 4 — LIKE & BETWEEN</div>
+      <p>a) Trouve tous les acteurs dont le prénom (first_name) commence par "J".<br>
+      b) Trouve les films dont le rental_rate est entre 1.00 et 3.00.</p>
+      <details class="answer">
+        <summary><span class="summary-arrow">▶</span> Voir la correction</summary>
+        <div class="answer-content">
+          <table class="ans-table" style="margin-bottom:0.8rem">
+            <tr><th>Opérateur</th><th>Pattern utilisé</th><th>Signification</th></tr>
+            <tr><td class="pk">LIKE 'J%'</td><td class="attr">'J%'</td><td class="attr">Commence par J, suivi de n'importe quoi</td></tr>
+            <tr><td class="pk">BETWEEN 1.00 AND 3.00</td><td class="attr">1.00 ≤ x ≤ 3.00</td><td class="attr">Bornes incluses</td></tr>
+          </table>
+          <div class="ans-code"><span class="c-cm">-- a) Prénoms commençant par J</span>
+<span class="c-kw">SELECT</span> first_name, last_name
+<span class="c-kw">FROM</span> actor
+<span class="c-kw">WHERE</span> first_name <span class="c-fn">LIKE</span> <span class="c-str">'J%'</span>;
+
+<span class="c-cm">-- b) Rental rate entre 1.00 et 3.00</span>
+<span class="c-kw">SELECT</span> title, rental_rate
+<span class="c-kw">FROM</span> film
+<span class="c-kw">WHERE</span> rental_rate <span class="c-fn">BETWEEN</span> <span class="c-num">1.00</span> <span class="c-fn">AND</span> <span class="c-num">3.00</span>;</div>
+        </div>
+      </details>
+    </div>
+
+    <div class="exercise">
+      <div class="exercise-label">✏️ Exercice 5 — Examen type (toutes compétences)</div>
+      <p>Écrire en SQL : "Donne le nombre de films par notation (rating), uniquement pour les notations ayant plus de 200 films, triés par nombre décroissant."</p>
+      <details class="answer">
+        <summary><span class="summary-arrow">▶</span> Voir la correction</summary>
+        <div class="answer-content">
+          <table class="ans-table" style="margin-bottom:0.8rem">
+            <tr><th>Clause</th><th>Rôle</th><th>⚠️ Piège</th></tr>
+            <tr><td class="pk">SELECT rating, COUNT(*)</td><td class="attr">Afficher notation + nb films</td><td class="attr">—</td></tr>
+            <tr><td class="pk">GROUP BY rating</td><td class="attr">Grouper par notation</td><td class="attr">—</td></tr>
+            <tr><td class="pk" style="color:#c0392b">HAVING COUNT(*) &gt; 200</td><td class="attr">Filtrer les <strong>groupes</strong></td><td class="rule">⚠️ Pas WHERE ! WHERE filtre les lignes, HAVING filtre les groupes</td></tr>
+            <tr><td class="pk">ORDER BY nb_films DESC</td><td class="attr">Trier décroissant</td><td class="attr">—</td></tr>
+          </table>
+          <div class="ans-code"><span class="c-kw">SELECT</span> rating, <span class="c-fn">COUNT</span>(*) <span class="c-kw">AS</span> nb_films
+<span class="c-kw">FROM</span> film
+<span class="c-kw">GROUP BY</span> rating
+<span class="c-fn">HAVING</span> <span class="c-fn">COUNT</span>(*) &gt; <span class="c-num">200</span>
+<span class="c-kw">ORDER BY</span> nb_films <span class="c-fn">DESC</span>;</div>
+        </div>
+      </details>
+    </div>
+  </div>
+
+  <div class="nav-buttons">
+    <button class="btn btn-secondary" onclick="show('mpd')">← Module 3</button>
+    <button class="btn btn-primary" onclick="show('home')">🏠 Retour accueil</button>
+  </div>
+</section>
+
+</main>
+
+<style>
+/* ===== KEYWORD CHIPS ===== */
+.kw-chip {
+  cursor: pointer;
+  transition: all 0.18s ease;
+  user-select: none;
+  position: relative;
+}
+.kw-chip:hover {
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+  filter: brightness(1.15);
+}
+.kw-chip::after {
+  content: '↗';
+  font-size: 0.55rem;
+  margin-left: 0.3rem;
+  opacity: 0.6;
+}
+
+/* ===== FLASHCARD MODE BUTTON ===== */
+.flashcard-mode-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 1.2rem;
+  padding: 0.7rem 1.4rem;
+  background: linear-gradient(135deg, rgba(79,70,229,0.08), rgba(224,64,94,0.06));
+  border: 1px dashed rgba(79,70,229,0.35);
+  border-radius: 12px;
+  font-family: 'Space Mono', monospace;
+  font-size: 0.72rem;
+  color: var(--accent1);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s;
+  width: 100%;
+  justify-content: center;
+}
+.flashcard-mode-btn:hover {
+  background: rgba(79,70,229,0.12);
+  border-color: var(--accent1);
+  transform: translateY(-1px);
+}
+
+/* ===== MODAL OVERLAY ===== */
+.kw-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(26,26,46,0.55);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+.kw-modal-overlay.visible {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.kw-modal {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  width: 100%;
+  max-width: 460px;
+  padding: 2rem;
+  position: relative;
+  transform: translateY(20px) scale(0.97);
+  transition: transform 0.28s cubic-bezier(0.34,1.56,0.64,1);
+  box-shadow: 0 24px 80px rgba(0,0,0,0.18);
+}
+.kw-modal-overlay.visible .kw-modal {
+  transform: translateY(0) scale(1);
+}
+
+.kw-modal-close {
+  position: absolute;
+  top: 1rem; right: 1rem;
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 0.9rem;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+  line-height: 1;
+}
+.kw-modal-close:hover { background: var(--accent2); color: white; border-color: var(--accent2); }
+
+.kw-modal-tag {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 0.6rem;
+}
+
+.kw-modal-term {
+  font-family: 'Space Mono', monospace;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--accent1);
+  margin-bottom: 1.2rem;
+  line-height: 1.25;
+}
+
+.kw-modal-def {
+  font-size: 0.9rem;
+  color: var(--text);
+  line-height: 1.7;
+  margin-bottom: 1rem;
+}
+.kw-modal-def strong { color: var(--accent3); }
+
+.kw-modal-example {
+  background: #f0eee8;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.9rem 1.1rem;
+  font-family: 'Space Mono', monospace;
+  font-size: 0.75rem;
+  color: #4f46e5;
+  line-height: 1.7;
+  margin-top: 0.8rem;
+}
+.kw-modal-example .ex-label {
+  font-size: 0.6rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 0.4rem;
+}
+
+.kw-modal-tip {
+  margin-top: 1rem;
+  padding: 0.7rem 1rem;
+  background: rgba(201,122,26,0.07);
+  border-left: 3px solid var(--accent4);
+  border-radius: 0 8px 8px 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+/* ===== FLASHCARD OVERLAY ===== */
+.fc-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+}
+.fc-overlay.visible {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.fc-header {
+  position: absolute;
+  top: 1.2rem; left: 0; right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1.5rem;
+}
+
+.fc-progress-text {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.68rem;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+}
+
+.fc-close-btn {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.68rem;
+  color: var(--muted);
+  background: none;
+  border: 1px solid var(--border);
+  padding: 0.35rem 0.8rem;
+  border-radius: 8px;
+  cursor: pointer;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transition: all 0.15s;
+}
+.fc-close-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+
+.fc-deck-info {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.6rem;
+  color: var(--accent1);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  margin-bottom: 2rem;
+}
+
+/* CARD FLIP */
+.fc-scene {
+  width: min(420px, 90vw);
+  height: 260px;
+  perspective: 900px;
+  cursor: pointer;
+  margin-bottom: 1.5rem;
+}
+
+.fc-card {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.55s cubic-bezier(0.4,0,0.2,1);
+}
+.fc-card.flipped { transform: rotateY(180deg); }
+
+.fc-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  border-radius: 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  text-align: center;
+}
+
+.fc-front {
+  background: var(--card);
+  border: 1px solid var(--border);
+  box-shadow: 0 8px 40px rgba(0,0,0,0.1);
+}
+.fc-front-hint {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.6rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  margin-bottom: 1rem;
+}
+.fc-front-term {
+  font-family: 'Space Mono', monospace;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.2;
+}
+.fc-front-tap {
+  margin-top: 1.2rem;
+  font-family: 'Space Mono', monospace;
+  font-size: 0.58rem;
+  color: var(--muted);
+  opacity: 0.7;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.fc-back {
+  background: linear-gradient(135deg, #f0eee8, #e8f4f0);
+  border: 1px solid rgba(13,158,126,0.3);
+  transform: rotateY(180deg);
+  box-shadow: 0 8px 40px rgba(13,158,126,0.15);
+  overflow: hidden;
+}
+.fc-back-def {
+  font-size: 0.85rem;
+  color: var(--text);
+  line-height: 1.65;
+}
+.fc-back-def strong { color: #0d7a5f; }
+.fc-back-ex {
+  margin-top: 0.8rem;
+  font-family: 'Space Mono', monospace;
+  font-size: 0.7rem;
+  color: #4f46e5;
+  background: rgba(79,70,229,0.06);
+  border: 1px solid rgba(79,70,229,0.15);
+  padding: 0.4rem 0.7rem;
+  border-radius: 6px;
+}
+
+/* PROGRESS DOTS */
+.fc-dots {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: 400px;
+}
+.fc-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--border);
+  transition: background 0.3s;
+}
+.fc-dot.seen { background: var(--accent1); }
+.fc-dot.current { background: var(--accent3); transform: scale(1.3); }
+
+/* NAV BUTTONS */
+.fc-nav {
+  display: flex;
+  gap: 0.8rem;
+  align-items: center;
+}
+.fc-btn {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.65rem 1.3rem;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.18s;
+  border: none;
+}
+.fc-btn-prev {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+.fc-btn-prev:hover { border-color: var(--accent1); color: var(--accent1); }
+.fc-btn-next {
+  background: var(--accent1);
+  color: white;
+}
+.fc-btn-next:hover { background: #5a52e0; transform: translateY(-1px); }
+.fc-btn-finish {
+  background: var(--accent3);
+  color: white;
+}
+.fc-btn-finish:hover { background: #0b8a6e; }
+
+/* FINISH SCREEN */
+.fc-finish {
+  text-align: center;
+  animation: fadeIn 0.4s ease;
+}
+.fc-finish-emoji { font-size: 3rem; margin-bottom: 1rem; }
+.fc-finish-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.6rem;
+  font-weight: 600;
+  margin-bottom: 0.6rem;
+}
+.fc-finish-sub {
+  font-size: 0.88rem;
+  color: var(--muted);
+  margin-bottom: 1.5rem;
+}
+</style>
+
+<!-- KEYWORD MODAL -->
+<div class="kw-modal-overlay" id="kwModal" onclick="closeModal(event)">
+  <div class="kw-modal">
+    <button class="kw-modal-close" onclick="closeKwModal()">✕</button>
+    <div class="kw-modal-tag">Concept SQL</div>
+    <div class="kw-modal-term" id="modalTerm"></div>
+    <div class="kw-modal-def" id="modalDef"></div>
+    <div class="kw-modal-example" id="modalEx">
+      <div class="ex-label">Exemple</div>
+      <div id="modalExCode"></div>
+    </div>
+    <div class="kw-modal-tip" id="modalTip"></div>
+  </div>
+</div>
+
+<!-- FLASHCARD OVERLAY -->
+<div class="fc-overlay" id="fcOverlay">
+  <div class="fc-header">
+    <div class="fc-progress-text" id="fcProgressText">1 / 10</div>
+    <button class="fc-close-btn" onclick="closeFlashcards()">✕ Fermer</button>
+  </div>
+
+  <div class="fc-deck-info" id="fcDeckInfo">Module</div>
+
+  <div class="fc-dots" id="fcDots"></div>
+
+  <!-- Card scene -->
+  <div class="fc-scene" id="fcScene" onclick="flipCard()">
+    <div class="fc-card" id="fcCard">
+      <div class="fc-face fc-front">
+        <div class="fc-front-hint">Terme</div>
+        <div class="fc-front-term" id="fcFrontTerm"></div>
+        <div class="fc-front-tap">Cliquer pour voir la définition</div>
+      </div>
+      <div class="fc-face fc-back">
+        <div class="fc-back-def" id="fcBackDef"></div>
+        <div class="fc-back-ex" id="fcBackEx"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="fc-nav" id="fcNav">
+    <button class="fc-btn fc-btn-prev" id="fcPrevBtn" onclick="fcPrev()">← Préc.</button>
+    <button class="fc-btn fc-btn-next" id="fcNextBtn" onclick="fcNext()">Suivant →</button>
+  </div>
+
+  <!-- Finish screen -->
+  <div class="fc-finish" id="fcFinish" style="display:none">
+    <div class="fc-finish-emoji">🎉</div>
+    <div class="fc-finish-title">Session terminée !</div>
+    <div class="fc-finish-sub" id="fcFinishSub"></div>
+    <div style="display:flex;gap:0.8rem;justify-content:center;flex-wrap:wrap">
+      <button class="fc-btn fc-btn-next" onclick="restartFlashcards()">🔄 Recommencer</button>
+      <button class="fc-btn fc-btn-prev" onclick="closeFlashcards()">✕ Fermer</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  /* ============================================================
+     KEYWORD DATABASE
+  ============================================================ */
+  const KW_DATA = {
+    'Entité type': {
+      def: 'Une <strong>entité type</strong> est la représentation abstraite d\'une catégorie d\'objets du monde réel partageant les mêmes caractéristiques. C\'est le "moule" à partir duquel on crée des instances.',
+      ex: 'ÉTUDIANT, VOITURE, COURS',
+      tip: 'Ne pas confondre avec une occurrence : ÉTUDIANT est l\'entité type, "Marie Curie n°345" est une occurrence.'
+    },
+    'Occurrence': {
+      def: 'Une <strong>occurrence</strong> (ou instance) est un exemplaire concret d\'une entité type. Elle correspond à une ligne dans la future table SQL.',
+      ex: 'Étudiant n°345 : Marie Curie, née 1967',
+      tip: 'Chaque occurrence est unique, identifiée par son identifiant.'
+    },
+    'Association': {
+      def: 'Une <strong>association</strong> représente un lien sémantique entre deux ou plusieurs entités. Elle se nomme avec un verbe à l\'infinitif et peut porter ses propres attributs.',
+      ex: 'ÉTUDIANT — "suit" → COURS\n(avec attribut : note, semestre)',
+      tip: 'Si l\'association porte des attributs, elle deviendra une table en MLD (règle N-N).'
+    },
+    'Cardinalité (min, max)': {
+      def: 'La <strong>cardinalité</strong> exprime le nombre minimum et maximum de fois qu\'une entité participe à une association. Format : (min, max).',
+      ex: 'CLIENT (1,N) — passer — COMMANDE (1,1)\n→ Un client passe 1 à N commandes',
+      tip: 'min=0 = participation optionnelle, min=1 = obligatoire. Lire la cardinalité côté entité opposée.'
+    },
+    'Identifiant': {
+      def: 'L\'<strong>identifiant</strong> est l\'attribut qui permet d\'identifier de manière unique chaque occurrence d\'une entité. Il est souligné dans le MCD.',
+      ex: 'ÉTUDIANT : numEtudiant (souligné)',
+      tip: 'L\'identifiant devient la PRIMARY KEY en SQL. Il doit être unique et non nul.'
+    },
+    'Attribut multivalué': {
+      def: 'Un <strong>attribut multivalué</strong> peut contenir plusieurs valeurs pour une même occurrence. Il viole la 1FN et doit être transformé en une entité séparée.',
+      ex: 'Un LIVRE avec plusieurs AUTEURS\n→ créer l\'entité AUTEUR séparée',
+      tip: '⚠️ Interdit en base de données finale. Toujours transformer en entité + association.'
+    },
+    'Attribut dérivé': {
+      def: 'Un <strong>attribut dérivé</strong> est calculable à partir d\'autres données déjà stockées. Il ne doit PAS être stocké car il crée de la redondance.',
+      ex: 'âge = calculé depuis dateNaissance\n→ stocker uniquement dateNaissance',
+      tip: '⚠️ Ne jamais stocker un attribut dérivé. Le calculer à la volée dans les requêtes SQL.'
+    },
+    '1FN / 2FN / 3FN': {
+      def: 'Les <strong>Formes Normales</strong> garantissent la qualité du modèle.\n1FN : attributs atomiques + identifiant.\n2FN : dépendances fonctionnelles élémentaires.\n3FN : dépendances uniquement depuis l\'identifiant.',
+      ex: '3FN : VOITURE(Immatriculation, Type, Marque)\nMarque dépend de Type → violation 3FN',
+      tip: 'En pratique : chaque attribut doit dépendre uniquement de la clé primaire, toute la clé, rien d\'autre.'
+    },
+    'Dépendance fonctionnelle': {
+      def: 'A → B signifie que la valeur de A détermine <strong>uniquement</strong> la valeur de B. C\'est la base du raisonnement sur les formes normales.',
+      ex: 'numEtudiant → nomEtudiant (OK)\nType → Marque dans VOITURE (violation 3FN)',
+      tip: 'Pour la 3FN, seul l\'identifiant doit être à gauche de la flèche de dépendance.'
+    },
+    'Association réflexive': {
+      def: 'Une <strong>association réflexive</strong> lie une entité à elle-même. Ex : un Employé a un supérieur qui est aussi un Employé.',
+      ex: 'EMPLOYE(idEmploye, nom, idSuperviseur FK → EMPLOYE)',
+      tip: 'En MLD, une seule table avec un attribut auto-référençant (FK vers sa propre table).'
+    },
+    'Clé Primaire (PK)': {
+      def: 'La <strong>clé primaire</strong> (PRIMARY KEY) identifie de manière unique chaque ligne d\'une table. Elle est NOT NULL et UNIQUE par définition.',
+      ex: 'CREATE TABLE student(\n  std_id INT PRIMARY KEY\n)',
+      tip: 'Correspond à l\'identifiant du MCD. Une table n\'a qu\'une seule PK (mais elle peut être composite).'
+    },
+    'Clé Étrangère (FK)': {
+      def: 'La <strong>clé étrangère</strong> (FOREIGN KEY) est un attribut qui référence la clé primaire d\'une autre table, matérialisant ainsi un lien entre tables.',
+      ex: 'FOREIGN KEY (unv_name)\n  REFERENCES university(unv_name)',
+      tip: 'La FK est le résultat de la migration de clé lors de la transformation MCD → MLD (règle 1-N).'
+    },
+    'NOT NULL': {
+      def: '<strong>NOT NULL</strong> est une contrainte qui interdit les valeurs nulles pour un attribut. Elle garantit que la colonne aura toujours une valeur.',
+      ex: 'std_name VARCHAR(30) NOT NULL',
+      tip: 'Une FK est NOT NULL quand la cardinalité minimum est 1 côté de l\'entité qui porte la FK.'
+    },
+    'UNIQUE': {
+      def: '<strong>UNIQUE</strong> garantit que toutes les valeurs d\'une colonne sont distinctes. Indispensable pour les FK dans les associations 1-1.',
+      ex: 'numCommande FK UNIQUE NOT NULL\n→ garantit 1 seule facture par commande',
+      tip: 'Différent de PRIMARY KEY : une table peut avoir plusieurs contraintes UNIQUE, mais une seule PK.'
+    },
+    'Clé composite': {
+      def: 'Une <strong>clé composite</strong> est une clé primaire formée de plusieurs attributs. Elle est utilisée dans les tables de jointure issues d\'associations N-N.',
+      ex: 'CONTIENT(\n  numCommande FK,\n  reference FK,\n  PK = (numCommande, reference)\n)',
+      tip: 'C\'est le résultat direct de la règle 2 (N-N) du passage MCD → MLD.'
+    },
+    'Migration de clé': {
+      def: 'La <strong>migration de clé</strong> est le mécanisme par lequel la PK d\'une entité "migre" vers une autre table sous forme de FK lors du passage en MLD.',
+      ex: 'UNIVERSITÉ (PK: nomUniv)\n→ ÉTUDIANT reçoit nomUniv comme FK',
+      tip: 'En règle 1-N : la PK du côté "1" migre vers le côté "N".'
+    },
+    "Contrainte d'intégrité": {
+      def: 'Les <strong>contraintes d\'intégrité</strong> garantissent la cohérence des données : NOT NULL, UNIQUE, CHECK, FOREIGN KEY.',
+      ex: 'On ne peut pas supprimer une université\nsi des étudiants la référencent encore.',
+      tip: 'MySQL vérifie les contraintes automatiquement. DROP TABLE sur une table référencée → erreur !'
+    },
+    'Règle 1-N / N-N / 1-1': {
+      def: 'Les <strong>3 règles de transformation</strong> MCD→MLD :\n1-N : FK migre côté N\nN-N : association → table avec PK composite\n1-1 : FK avec UNIQUE côté dépendant',
+      ex: '1-N : ÉTUDIANT reçoit FK de UNIVERSITÉ\nN-N : CONTIENT(FK1, FK2)\n1-1 : FACTURE reçoit FK de COMMANDE UNIQUE',
+      tip: 'La cardinalité maximale des deux côtés détermine la règle : regarder si c\'est 1 ou N de chaque côté.'
+    },
+    'VARCHAR(n)': {
+      def: '<strong>VARCHAR(n)</strong> stocke des chaînes de caractères de longueur variable. n définit le nombre maximum de caractères.',
+      ex: 'std_name VARCHAR(30)\nunv_country VARCHAR(20)',
+      tip: 'Utiliser VARCHAR plutôt que CHAR sauf si la longueur est toujours fixe (ex: codes postaux).'
+    },
+    'INT / DECIMAL': {
+      def: '<strong>INT</strong> stocke des entiers. <strong>DECIMAL(p,s)</strong> stocke des nombres exacts avec p chiffres au total et s après la virgule.',
+      ex: 'std_id INT\nprix DECIMAL(10,2)  -- ex: 9999999.99',
+      tip: 'Ne jamais utiliser FLOAT pour les prix ! DECIMAL garantit la précision exacte.'
+    },
+    'PRIMARY KEY': {
+      def: '<strong>PRIMARY KEY</strong> déclare l\'identifiant unique d\'une table. Combinaison automatique de NOT NULL + UNIQUE.',
+      ex: 'std_id INT NOT NULL PRIMARY KEY\n-- PK composite :\nPRIMARY KEY (col1, col2)',
+      tip: 'Pour une PK composite (N-N), on la déclare après les colonnes : PRIMARY KEY (fk1, fk2).'
+    },
+    'FOREIGN KEY': {
+      def: '<strong>FOREIGN KEY</strong> lie une colonne à la PK d\'une autre table. Elle garantit l\'intégrité référentielle.',
+      ex: 'FOREIGN KEY (unv_name)\n  REFERENCES university(unv_name)',
+      tip: 'La table parent (référencée) doit être créée AVANT la table enfant. Sinon erreur !'
+    },
+    'REFERENCES': {
+      def: '<strong>REFERENCES</strong> indique quelle table et quelle colonne est ciblée par une FOREIGN KEY.',
+      ex: 'FOREIGN KEY (cat_id)\n  REFERENCES categorie(cat_id)',
+      tip: 'La colonne référencée doit être PRIMARY KEY ou avoir une contrainte UNIQUE dans sa table.'
+    },
+    'CREATE TABLE': {
+      def: '<strong>CREATE TABLE</strong> crée une nouvelle table dans la base de données avec ses colonnes, types et contraintes.',
+      ex: 'CREATE TABLE student(\n  std_id INT PRIMARY KEY,\n  std_name VARCHAR(30) NOT NULL\n);',
+      tip: 'Ordre crucial : créer les tables parents avant les tables enfants qui les référencent.'
+    },
+    'INSERT INTO VALUES': {
+      def: '<strong>INSERT INTO ... VALUES</strong> ajoute des lignes dans une table. On peut insérer plusieurs lignes en une seule commande.',
+      ex: "INSERT INTO university VALUES\n  ('PSB', 'France', 'Paris'),\n  ('UTT', 'France', 'Troyes');",
+      tip: 'L\'ordre des valeurs doit correspondre exactement à l\'ordre des colonnes de la table.'
+    },
+    'UPDATE SET WHERE': {
+      def: '<strong>UPDATE ... SET ... WHERE</strong> modifie des données existantes. SET définit les nouvelles valeurs, WHERE cible les lignes.',
+      ex: "UPDATE university\nSET unv_address = 'Lyon'\nWHERE unv_name = 'PSB';",
+      tip: '⚠️ Sans WHERE, TOUTES les lignes sont modifiées ! Toujours vérifier le WHERE avant d\'exécuter.'
+    },
+    'ALTER TABLE ADD': {
+      def: '<strong>ALTER TABLE ADD</strong> ajoute une nouvelle colonne à une table existante sans la supprimer ni recréer.',
+      ex: 'ALTER TABLE student\nADD std_age INTEGER;',
+      tip: 'On peut aussi modifier (MODIFY) ou supprimer (DROP COLUMN) des colonnes avec ALTER TABLE.'
+    },
+    'DROP TABLE': {
+      def: '<strong>DROP TABLE</strong> supprime définitivement une table et toutes ses données. Irréversible !',
+      ex: '-- Ordre obligatoire :\nDROP TABLE student;    -- enfant d\'abord\nDROP TABLE university; -- parent ensuite',
+      tip: '⚠️ On ne peut pas supprimer une table si d\'autres tables la référencent en FK.'
+    },
+    'SELECT FROM': {
+      def: '<strong>SELECT</strong> choisit les colonnes à afficher. <strong>FROM</strong> indique la table source. Structure de base de toute requête de lecture.',
+      ex: 'SELECT title, length FROM film;\nSELECT * FROM customer;',
+      tip: 'SELECT * affiche toutes les colonnes. Préférer lister les colonnes explicitement en production.'
+    },
+    'WHERE': {
+      def: '<strong>WHERE</strong> filtre les lignes selon une ou plusieurs conditions. Les lignes ne satisfaisant pas la condition sont exclues.',
+      ex: "SELECT title FROM film\nWHERE rating = 'PG'\n  AND length > 100;",
+      tip: 'WHERE filtre les LIGNES avant GROUP BY. Pour filtrer des groupes, utiliser HAVING.'
+    },
+    'ORDER BY ASC/DESC': {
+      def: '<strong>ORDER BY</strong> trie les résultats. <strong>ASC</strong> = ordre croissant (défaut), <strong>DESC</strong> = ordre décroissant.',
+      ex: 'SELECT title FROM film\nORDER BY title ASC;\nORDER BY length DESC;',
+      tip: 'On peut trier sur plusieurs colonnes : ORDER BY col1 DESC, col2 ASC'
+    },
+    'LIMIT': {
+      def: '<strong>LIMIT n</strong> restreint le nombre de lignes retournées. Utile pour les aperçus et les top-N.',
+      ex: 'SELECT * FROM film\nORDER BY length DESC\nLIMIT 10;',
+      tip: 'Toujours utiliser ORDER BY avec LIMIT pour des résultats déterministes.'
+    },
+    'DISTINCT': {
+      def: '<strong>SELECT DISTINCT</strong> élimine les doublons dans les résultats. Chaque combinaison de valeurs n\'apparaît qu\'une seule fois.',
+      ex: 'SELECT DISTINCT rating FROM film;\n-- Retourne : PG, G, R, PG-13, NC-17',
+      tip: 'DISTINCT s\'applique à toute la ligne sélectionnée, pas seulement à une colonne.'
+    },
+    'COUNT / SUM / AVG': {
+      def: '<strong>COUNT(*)</strong> compte les lignes. <strong>SUM(col)</strong> additionne les valeurs. <strong>AVG(col)</strong> calcule la moyenne.',
+      ex: 'SELECT COUNT(*) FROM film;\nSELECT SUM(amount) FROM payment;\nSELECT AVG(length) FROM film;',
+      tip: 'COUNT(*) compte toutes les lignes. COUNT(col) ignore les NULL dans cette colonne.'
+    },
+    'MAX / MIN': {
+      def: '<strong>MAX(col)</strong> retourne la valeur maximale. <strong>MIN(col)</strong> retourne la valeur minimale.',
+      ex: 'SELECT MAX(length) FROM film;\nSELECT MIN(rental_rate) FROM film;',
+      tip: 'Combinable avec GROUP BY pour trouver le max/min par groupe.'
+    },
+    'GROUP BY': {
+      def: '<strong>GROUP BY</strong> regroupe les lignes ayant les mêmes valeurs, permettant d\'appliquer des fonctions d\'agrégation à chaque groupe.',
+      ex: 'SELECT rating, COUNT(*) AS nb\nFROM film\nGROUP BY rating\nORDER BY nb DESC;',
+      tip: 'Règle d\'or : toute colonne dans SELECT sans fonction d\'agrégation DOIT être dans GROUP BY.'
+    },
+    'LIKE % et _': {
+      def: '<strong>LIKE</strong> filtre selon un motif textuel. <strong>%</strong> = n\'importe quelle séquence de caractères. <strong>_</strong> = exactement un caractère.',
+      ex: "WHERE title LIKE 'A%'     -- commence par A\nWHERE title LIKE '%love%'  -- contient love\nWHERE title LIKE '_AT%'   -- 2e lettre = A",
+      tip: 'LIKE est insensible à la casse en MySQL par défaut.'
+    },
+    'BETWEEN AND': {
+      def: '<strong>BETWEEN a AND b</strong> filtre les valeurs comprises entre a et b, bornes incluses.',
+      ex: 'WHERE length BETWEEN 90 AND 120\nWHERE rental_rate BETWEEN 1.00 AND 3.00',
+      tip: 'Les bornes sont INCLUSES. Fonctionne aussi sur les dates.'
+    },
+    'IS NULL / IS NOT NULL': {
+      def: '<strong>IS NULL</strong> vérifie si une valeur est absente. <strong>IS NOT NULL</strong> vérifie qu\'une valeur est présente.',
+      ex: 'WHERE email IS NOT NULL\nWHERE email IS NULL',
+      tip: '⚠️ WHERE col = NULL ne fonctionne PAS. Toujours IS NULL ou IS NOT NULL.'
+    },
+    'AND / OR': {
+      def: '<strong>AND</strong> exige que TOUTES les conditions soient vraies. <strong>OR</strong> exige qu\'AU MOINS UNE condition soit vraie.',
+      ex: "WHERE rating = 'PG' AND length > 100\nWHERE rating = 'G' OR rating = 'PG'",
+      tip: 'AND est prioritaire sur OR. Utiliser des parenthèses pour lever toute ambiguïté : (A OR B) AND C'
+    }
+  };
+
+  /* ============================================================
+     MODULE DECKS
+  ============================================================ */
+  const MODULE_DECKS = {
+    mcd: ['Entité type','Occurrence','Association','Cardinalité (min, max)','Identifiant','Attribut multivalué','Attribut dérivé','1FN / 2FN / 3FN','Dépendance fonctionnelle','Association réflexive'],
+    mld: ['Clé Primaire (PK)','Clé Étrangère (FK)','NOT NULL','UNIQUE','Clé composite','Migration de clé',"Contrainte d'intégrité",'Règle 1-N / N-N / 1-1'],
+    mpd: ['VARCHAR(n)','INT / DECIMAL','PRIMARY KEY','FOREIGN KEY','REFERENCES','NOT NULL','CREATE TABLE','INSERT INTO VALUES','UPDATE SET WHERE','ALTER TABLE ADD','DROP TABLE'],
+    sql: ['SELECT FROM','WHERE','ORDER BY ASC/DESC','LIMIT','DISTINCT','COUNT / SUM / AVG','MAX / MIN','GROUP BY','LIKE % et _','BETWEEN AND','IS NULL / IS NOT NULL','AND / OR']
+  };
+  const MODULE_NAMES = {
+    mcd: 'Module 01 — MCD',
+    mld: 'Module 02 — MLD',
+    mpd: 'Module 03 — MPD & MySQL',
+    sql: 'Module 04 — Requêtes SQL'
+  };
+
+  /* ============================================================
+     FLASHCARD STATE
+  ============================================================ */
+  let fcDeck = [], fcIndex = 0, fcFlipped = false, fcSeenSet = new Set(), fcCurrentModule = '';
+
+  function shuffle(arr) {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  /* ============================================================
+     ALL PUBLIC FUNCTIONS (override stubs from <head>)
+  ============================================================ */
+  window.startFlashcards = function(module) {
+    fcCurrentModule = module;
+    fcDeck = shuffle(MODULE_DECKS[module]);
+    fcIndex = 0;
+    fcSeenSet = new Set();
+    fcFlipped = false;
+    document.getElementById('fcDeckInfo').textContent = MODULE_NAMES[module];
+    document.getElementById('fcFinish').style.display = 'none';
+    document.getElementById('fcScene').style.display = 'block';
+    document.getElementById('fcDots').style.display = 'flex';
+    document.getElementById('fcNav').style.display = 'flex';
+    renderFcDots();
+    renderFcCard();
+    document.getElementById('fcOverlay').classList.add('visible');
+    document.body.style.overflow = 'hidden';
+  };
+
+  window.closeFlashcards = function() {
+    document.getElementById('fcOverlay').classList.remove('visible');
+    document.body.style.overflow = '';
+  };
+
+  window.restartFlashcards = function() {
+    window.startFlashcards(fcCurrentModule);
+  };
+
+  window.flipCard = function() {
+    fcFlipped = !fcFlipped;
+    document.getElementById('fcCard').classList.toggle('flipped', fcFlipped);
+    if (fcFlipped) { fcSeenSet.add(fcIndex); renderFcDots(); }
+  };
+
+  window.fcNext = function() {
+    if (!document.getElementById('fcOverlay').classList.contains('visible')) return;
+    fcSeenSet.add(fcIndex);
+    if (fcIndex < fcDeck.length - 1) {
+      fcIndex++;
+      renderFcCard();
+    } else {
+      showFcFinish();
+    }
+  };
+
+  window.fcPrev = function() {
+    if (!document.getElementById('fcOverlay').classList.contains('visible')) return;
+    if (fcIndex > 0) { fcIndex--; renderFcCard(); }
+  };
+
+  window.closeKwModal = function() {
+    document.getElementById('kwModal').classList.remove('visible');
+    document.body.style.overflow = '';
+  };
+
+  window.closeModal = function(e) {
+    if (e.target === document.getElementById('kwModal')) window.closeKwModal();
+  };
+
+  /* ============================================================
+     INTERNAL HELPERS
+  ============================================================ */
+  function renderFcCard() {
+    const term = fcDeck[fcIndex];
+    const data = KW_DATA[term];
+    document.getElementById('fcFrontTerm').textContent = term;
+    document.getElementById('fcBackDef').innerHTML = data ? data.def.replace(/\n/g, '<br>') : '—';
+    document.getElementById('fcBackEx').innerHTML = data ? (data.ex || '').replace(/\n/g, '<br>') : '';
+    document.getElementById('fcProgressText').textContent = (fcIndex + 1) + ' / ' + fcDeck.length;
+    document.getElementById('fcCard').classList.remove('flipped');
+    fcFlipped = false;
+    document.getElementById('fcPrevBtn').style.opacity = fcIndex === 0 ? '0.35' : '1';
+    const isLast = fcIndex === fcDeck.length - 1;
+    const nextBtn = document.getElementById('fcNextBtn');
+    nextBtn.textContent = isLast ? '🎉 Terminer' : 'Suivant →';
+    nextBtn.className = isLast ? 'fc-btn fc-btn-finish' : 'fc-btn fc-btn-next';
+    renderFcDots();
+  }
+
+  function renderFcDots() {
+    const container = document.getElementById('fcDots');
+    container.innerHTML = '';
+    fcDeck.forEach(function(_, i) {
+      const dot = document.createElement('div');
+      dot.className = 'fc-dot' + (fcSeenSet.has(i) ? ' seen' : '') + (i === fcIndex ? ' current' : '');
+      container.appendChild(dot);
+    });
+  }
+
+  function showFcFinish() {
+    document.getElementById('fcScene').style.display = 'none';
+    document.getElementById('fcDots').style.display = 'none';
+    document.getElementById('fcNav').style.display = 'none';
+    document.getElementById('fcFinishSub').textContent =
+      'Tu as parcouru les ' + fcDeck.length + ' concepts du ' + MODULE_NAMES[fcCurrentModule] + '. Relance pour t\'entraîner encore !';
+    document.getElementById('fcFinish').style.display = 'block';
+  }
+
+  /* ============================================================
+     EVENT DELEGATION — keyword chips (works on hidden sections)
+  ============================================================ */
+  document.body.addEventListener('click', function(e) {
+    const chip = e.target.closest('.kw-chip');
+    if (!chip) return;
+    const term = chip.dataset.kw;
+    const data = KW_DATA[term];
+    if (!data) return;
+    document.getElementById('modalTerm').textContent = term;
+    document.getElementById('modalDef').innerHTML = data.def.replace(/\n/g, '<br>');
+    document.getElementById('modalExCode').innerHTML = (data.ex || '').replace(/\n/g, '<br>');
+    document.getElementById('modalTip').innerHTML = '💡 ' + (data.tip || '');
+    document.getElementById('kwModal').classList.add('visible');
+    document.body.style.overflow = 'hidden';
+  });
+
+  /* ============================================================
+     KEYBOARD SHORTCUTS
+  ============================================================ */
+  document.addEventListener('keydown', function(e) {
+    const modalOpen = document.getElementById('kwModal').classList.contains('visible');
+    const fcOpen    = document.getElementById('fcOverlay').classList.contains('visible');
+    if (e.key === 'Escape') {
+      if (modalOpen) window.closeKwModal();
+      else if (fcOpen) window.closeFlashcards();
+    }
+    if (!fcOpen) return;
+    if (e.key === 'ArrowRight') window.fcNext();
+    if (e.key === 'ArrowLeft')  window.fcPrev();
+    if (e.key === ' ') { e.preventDefault(); window.flipCard(); }
+  });
+</script>
+
+</body>
+</html>
